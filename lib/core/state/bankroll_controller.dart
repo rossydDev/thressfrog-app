@@ -38,4 +38,29 @@ class BankrollController extends ChangeNotifier {
 
     notifyListeners();
   }
+
+  void resolveBet(Bet bet, BetResult newResult) {
+    final index = _bets.indexWhere((b) => b.id == bet.id);
+
+    if (index == -1) return;
+
+    if (newResult == .win) {
+      _currentBalance += bet.potentialReturn;
+    } else if (newResult == .voided) {
+      _currentBalance += bet.stake;
+    }
+
+    final updateBet = Bet(
+      id: bet.id,
+      matchTitle: bet.matchTitle,
+      date: bet.date,
+      stake: bet.stake,
+      odd: bet.odd,
+      notes: bet.notes,
+      result: newResult,
+    );
+
+    _bets[index] = updateBet;
+    notifyListeners();
+  }
 }

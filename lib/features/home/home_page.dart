@@ -130,7 +130,19 @@ class HomePage extends StatelessWidget {
                           itemCount: bets.length,
                           itemBuilder: (context, index) {
                             final bet = bets[index];
-                            return _buildBetTile(bet);
+
+                            return GestureDetector(
+                              onTap: () {
+                                if (bet.result ==
+                                    BetResult.pending) {
+                                  _showResolveOptions(
+                                    context,
+                                    bet,
+                                  );
+                                }
+                              },
+                              child: _buildBetTile(bet),
+                            );
                           },
                         ),
                 ),
@@ -284,6 +296,95 @@ Widget _buildBetTile(Bet bet) {
           ),
         ),
       ],
+    ),
+  );
+}
+
+void _showResolveOptions(BuildContext context, Bet bet) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: AppColors.surfaceDark,
+    shape: const RoundedRectangleBorder(
+      borderRadius: .vertical(top: .circular(24)),
+    ),
+    builder: (context) {
+      return Padding(
+        padding: const .all(24.0),
+        child: Column(
+          mainAxisSize: .min,
+          children: [
+            Text(
+              "Resultado de ${bet.matchTitle}",
+              style: const TextStyle(
+                color: AppColors.textWhite,
+                fontWeight: .bold,
+                fontSize: 18,
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            _buildActionBtn(
+              label: "GREEN",
+              color: AppColors.neonGreen,
+              icon: Icons.trending_up,
+              onTap: () {
+                BankrollController.instance.resolveBet(
+                  bet,
+                  .win,
+                );
+                Navigator.pop(context);
+              },
+            ),
+
+            const SizedBox(height: 12),
+
+            _buildActionBtn(
+              label: "RED",
+              color: AppColors.errorRed,
+              icon: Icons.trending_down,
+              onTap: () {
+                BankrollController.instance.resolveBet(
+                  bet,
+                  .loss,
+                );
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildActionBtn({
+  required String label,
+  required Color color,
+  required IconData icon,
+  required VoidCallback onTap,
+}) {
+  return SizedBox(
+    width: double.infinity,
+    child: ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.withValues(alpha: 0.1),
+        foregroundColor: color,
+        padding: .symmetric(vertical: 16),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: .circular(12),
+          side: BorderSide(
+            color: color.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+      onPressed: onTap,
+      icon: Icon(icon),
+      label: Text(
+        label,
+        style: const TextStyle(fontWeight: .bold),
+      ),
     ),
   );
 }
