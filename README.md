@@ -1,65 +1,71 @@
-🐸 ThressFrog - Bankroll Management
+# 🐸 **ThressFrog — Bankroll Management App**  
+### *"O salto estratégico para sua banca."*
 
-"O salto estratégico para sua banca."
+---
 
-1. Visão do Produto
+## 🎯 **Visão do Produto**
 
-O ThressFrog é um aplicativo mobile desenvolvido em Flutter para gestão de banca em apostas esportivas, com foco no cenário de League of Legends (LoL). O objetivo é transformar a disciplina financeira em uma experiência gamificada, ajudando o apostador a respeitar seus limites ("Thresholds") e dar "pulos certeiros" em direção ao lucro.
+O **ThressFrog** é um aplicativo mobile desenvolvido em **Flutter** para gestão de banca em **apostas esportivas**, com foco inicial no cenário de **League of Legends (LoL)**.  
+A proposta é transformar disciplina financeira em **experiência gamificada**, ajudando o apostador a respeitar seus **Thresholds** e dar *“pulos certeiros”* rumo ao lucro.
 
-2. Identidade Visual (UI/UX)
+---
 
-Tema: Dark Mode (Foco e Conforto Visual).
+## 🎨 **Identidade Visual (UI/UX)**
 
-Cor Primária: Lemon Green (#CCFF00 ou similar) - Representa o "Green", o lucro e a energia.
+- **Tema:** Dark Mode (foco, imersão e conforto visual)  
+- **Cor Primária:** 🍋 **Lemon Green** — `#CCFF00`  
+- **Estilo:** Minimalista + Gamer UI (contrastes fortes e fontes modernas)
 
-Estilo: Minimalista, com fontes modernas e elementos de "Gamer UI".
+---
 
-3. Core Features (MVP - Mínimo Produto Viável)
+## 🧩 **Core Features — MVP**
 
-📊 Gestão de Banca
+### 📊 **Gestão de Banca**
+- Definição de banca inicial  
+- Cálculo automático da **stake** por porcentagem  
+- Modos de gestão: Conservadora / Moderada / Agressiva  
+- Registro detalhado de apostas:
+  - Partida  
+  - Odds  
+  - Valor  
+  - Resultado
 
-Definição de Banca Inicial.
+---
 
-Definição de Stake (valor da aposta) baseada em porcentagem (Gestão Conservadora vs. Agressiva).
+### 🛡️ **Sistema Threshold**
+- **Stop Win** → Meta atingida? O app sugere encerrar  
+- **Stop Loss** → Limite de perda alcançado? Alerta agressivo  
+- **Ghost Frog** → Zona segura de lucro protegido  
 
-Registro de Entradas (Partida, Odds, Valor, Resultado).
+---
 
-🛡️ Sistema Threshold (Limites)
+### 🎮 **Gamificação — *The Frog Path***
+- **XP por Disciplina** (ganhe por seguir a gestão)  
+- **Badges**
+  - *Sniper* — alta assertividade  
+  - *Tank* — resistiu a um red streak sem quebrar  
+- **Níveis:** Girino → Sapo Aprendiz → **Sapo Rei**
 
-Stop Win: Meta do dia alcançada? O app sugere parar.
+---
 
-Stop Loss: Limite de perda atingido? O app bloqueia ou alerta agressivamente.
+## 🛠️ **Stack Tecnológica (Planejada)**
 
-Ghost Frog: O "limite seguro" onde o lucro é protegido.
+| Categoria | Tecnologia |
+|----------|------------|
+| Linguagem | Dart |
+| Framework | Flutter |
+| Estado | Riverpod (ou Provider) |
+| Banco Local | Hive ou Isar |
+| Arquitetura | Clean Architecture / MVVM |
 
-🎮 Gamificação (The Frog Path)
+---
 
-XP por Disciplina: Ganhe pontos não apenas por lucrar, mas por seguir a gestão.
+## 📁 **Estrutura de Pastas**
 
-Badges: "Sniper" (alta assertividade), "Tank" (segurou um red streak sem quebrar).
-
-Níveis: Girino -> Sapo Aprendiz -> Sapo Rei.
-
-4. Stack Tecnológica (Planejada)
-
-Linguagem: Dart
-
-Framework: Flutter (Multiplataforma)
-
-Gerenciamento de Estado: Riverpod (Moderno, seguro e testável) ou Provider.
-
-Armazenamento Local: Hive ou Isar (NoSQL, extremamente rápido para mobile).
-
-Arquitetura: Clean Architecture ou MVVM (Model-View-ViewModel).
-
-5. Estrutura de Pastas (Sugestão Inicial)
-
+```bash
 lib/
-  ├── core/          # Configurações globais, temas, constantes
-  ├── features/      # Módulos do app (ex: dashboard, history, gamification)
-  ├── models/        # Modelos de dados
-  ├── services/      # Lógica de banco de dados
-  └── main.dart
-
-
-Desenvolvido com foco em aprendizado e engenharia de software sólida.
+├── core/        # Tema, constantes, helpers, configs
+├── features/    # Módulos (dashboard, history, gamification...)
+├── models/      # Modelos de dados
+├── services/    # Banco de dados e lógica de acesso
+└── main.dart    # Entry point
