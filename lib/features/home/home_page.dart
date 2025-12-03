@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:thressfrog_app/core/state/bankroll_controller.dart';
-import 'package:thressfrog_app/features/create_bet/create_bet_page.dart';
 
+import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/bet_model.dart';
+import '../create_bet/create_bet_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -21,31 +21,33 @@ class HomePage extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('THRESSFROG'),
+            title: const Text("THRESSFROG"),
             centerTitle: false,
             actions: [
               IconButton(
                 onPressed: () {},
-                icon: Icon(
+                icon: const Icon(
                   Icons.notifications_none_rounded,
                 ),
               ),
               IconButton(
-                onPressed: () {},
-                icon: Icon(Icons.grid_view_rounded),
+                onPressed: () {
+                  // Reset de emergência para testes
+                  // BankrollController.instance.resetBankroll();
+                },
+                icon: const Icon(Icons.grid_view_rounded),
               ),
             ],
           ),
           body: Padding(
-            padding: const EdgeInsetsGeometry.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: 20.0,
             ),
             child: Column(
-              crossAxisAlignment: .start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 20),
 
-                // Seção 1: Saldo (Hero Section)
                 const Text(
                   "Banca Total",
                   style: TextStyle(
@@ -59,26 +61,25 @@ class HomePage extends StatelessWidget {
                   style: const TextStyle(
                     color: AppColors.textWhite,
                     fontSize: 40,
-                    fontWeight: .bold,
+                    fontWeight: FontWeight.bold,
                     letterSpacing: -1.0,
                   ),
                 ),
 
                 const SizedBox(height: 30),
 
-                // Seção 2: Resumo Rápido (Card Horizontais)
                 Row(
                   children: [
                     Expanded(
-                      child: _buildSumaryCard(
-                        "Lucro Hoje",
-                        "+ R\$ ${profit.toStringAsFixed(2)}",
-                        isPositive: true,
+                      child: _buildSummaryCard(
+                        "Lucro Total",
+                        "R\$ ${profit.toStringAsFixed(2)}",
+                        isPositive: profit >= 0,
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _buildSumaryCard(
+                      child: _buildSummaryCard(
                         "Win Rate",
                         winRate,
                         isPositive: true,
@@ -89,37 +90,37 @@ class HomePage extends StatelessWidget {
 
                 const SizedBox(height: 30),
 
-                // -- Seção 3: Histórico Recente
                 Row(
-                  mainAxisAlignment: .spaceBetween,
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       "Últimos Pulos",
                       style: TextStyle(
                         color: AppColors.textWhite,
                         fontSize: 18,
-                        fontWeight: .bold,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        "Ver tudo",
-                        style: TextStyle(
-                          color: AppColors.neonGreen,
+                    if (bets.isNotEmpty)
+                      TextButton(
+                        onPressed: () {},
+                        child: const Text(
+                          "Ver tudo",
+                          style: TextStyle(
+                            color: AppColors.neonGreen,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
 
-                //Lista de Apostas
                 Expanded(
                   child: bets.isEmpty
                       ? Center(
                           child: Text(
-                            "Nenhum pulo registrado. \nComece sua jornada!",
-                            textAlign: .center,
+                            "Nenhum pulo registrado.\nComece sua jornada!",
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               color: AppColors.textGrey
                                   .withValues(alpha: 0.5),
@@ -130,7 +131,6 @@ class HomePage extends StatelessWidget {
                           itemCount: bets.length,
                           itemBuilder: (context, index) {
                             final bet = bets[index];
-
                             return GestureDetector(
                               onTap: () {
                                 if (bet.result ==
@@ -151,12 +151,15 @@ class HomePage extends StatelessWidget {
           ),
           floatingActionButton:
               FloatingActionButton.extended(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CreateBetPage(),
-                  ),
-                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const CreateBetPage(),
+                    ),
+                  );
+                },
                 backgroundColor: AppColors.neonGreen,
                 icon: const Icon(
                   Icons.add,
@@ -166,7 +169,7 @@ class HomePage extends StatelessWidget {
                   "NOVO PULO",
                   style: TextStyle(
                     color: AppColors.deepBlack,
-                    fontWeight: .bold,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -174,217 +177,237 @@ class HomePage extends StatelessWidget {
       },
     );
   }
-}
 
-Widget _buildSumaryCard(
-  String title,
-  String value, {
-  bool isPositive = true,
-}) {
-  return Container(
-    padding: const .all(20),
-    decoration: BoxDecoration(
-      color: AppColors.surfaceDark,
-      borderRadius: .circular(24),
-    ),
-    child: Column(
-      crossAxisAlignment: .start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.textGrey,
-            fontSize: 14,
-          ),
+  void _showResolveOptions(BuildContext context, Bet bet) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
         ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            color: isPositive
-                ? AppColors.neonGreen
-                : AppColors.errorRed,
-            fontSize: 20,
-            fontWeight: .bold,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _buildBetTile(Bet bet) {
-  Color statusColor;
-  IconData statusIcon;
-  String statusText;
-
-  switch (bet.result) {
-    case BetResult.win:
-      statusColor = AppColors.neonGreen;
-      statusIcon = Icons.arrow_outward_rounded;
-      statusText = "+ R\$ ${bet.profit.toStringAsFixed(2)}";
-      break;
-    case BetResult.loss:
-      statusColor = AppColors.errorRed;
-      statusIcon = Icons.arrow_downward_rounded;
-      statusText = "- R\$ ${bet.stake.toStringAsFixed(2)}";
-      break;
-    case BetResult.pending:
-      statusColor = AppColors.textGrey;
-      statusIcon = Icons.access_time_rounded;
-      statusText = "Pendente";
-      break;
-    default:
-      statusColor = AppColors.textGrey;
-      statusIcon = Icons.block;
-      statusText = "Anulada";
-  }
-
-  return Container(
-    margin: const .only(bottom: 12),
-    padding: const .all(16),
-    decoration: BoxDecoration(
-      color: AppColors.surfaceDark,
-      borderRadius: .circular(20),
-    ),
-    child: Row(
-      children: [
-        //Icone circuloar
-        Container(
-          padding: const .all(12),
-          decoration: BoxDecoration(
-            color: statusColor.withValues(alpha: 0.1),
-            shape: .circle,
-          ),
-          child: Icon(
-            statusIcon,
-            color: statusColor,
-            size: 20,
-          ),
-        ),
-        //Informações da Partida
-        Expanded(
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
           child: Column(
-            crossAxisAlignment: .start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                bet.matchTitle,
+                "Resultado de ${bet.matchTitle}",
                 style: const TextStyle(
                   color: AppColors.textWhite,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
                 ),
               ),
-              Text(
-                "Odd: ${bet.odd}",
-                style: const TextStyle(
-                  color: AppColors.textGrey,
-                  fontSize: 12,
-                ),
+              const SizedBox(height: 24),
+              _buildActionBtn(
+                label: "GREEN (Venceu)",
+                color: AppColors.neonGreen,
+                icon: Icons.trending_up,
+                onTap: () {
+                  BankrollController.instance.resolveBet(
+                    bet,
+                    BetResult.win,
+                  );
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildActionBtn(
+                label: "RED (Perdeu)",
+                color: AppColors.errorRed,
+                icon: Icons.trending_down,
+                onTap: () {
+                  BankrollController.instance.resolveBet(
+                    bet,
+                    BetResult.loss,
+                  );
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildActionBtn(
+                label: "Anulada / Reembolso",
+                color: AppColors.textGrey,
+                icon: Icons.refresh,
+                onTap: () {
+                  BankrollController.instance.resolveBet(
+                    bet,
+                    BetResult.voided,
+                  );
+                  Navigator.pop(context);
+                },
               ),
             ],
           ),
-        ),
+        );
+      },
+    );
+  }
 
-        //Valor (Lucro ou Prejuizo)
-        Text(
-          statusText,
-          style: TextStyle(
-            color: statusColor,
-            fontWeight: .bold,
-            fontSize: 16,
+  Widget _buildActionBtn({
+    required String label,
+    required Color color,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color.withValues(alpha: 0.1),
+          foregroundColor: color,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: color.withValues(alpha: 0.5),
+            ),
           ),
         ),
-      ],
-    ),
-  );
-}
-
-void _showResolveOptions(BuildContext context, Bet bet) {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: AppColors.surfaceDark,
-    shape: const RoundedRectangleBorder(
-      borderRadius: .vertical(top: .circular(24)),
-    ),
-    builder: (context) {
-      return Padding(
-        padding: const .all(24.0),
-        child: Column(
-          mainAxisSize: .min,
-          children: [
-            Text(
-              "Resultado de ${bet.matchTitle}",
-              style: const TextStyle(
-                color: AppColors.textWhite,
-                fontWeight: .bold,
-                fontSize: 18,
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            _buildActionBtn(
-              label: "GREEN",
-              color: AppColors.neonGreen,
-              icon: Icons.trending_up,
-              onTap: () {
-                BankrollController.instance.resolveBet(
-                  bet,
-                  .win,
-                );
-                Navigator.pop(context);
-              },
-            ),
-
-            const SizedBox(height: 12),
-
-            _buildActionBtn(
-              label: "RED",
-              color: AppColors.errorRed,
-              icon: Icons.trending_down,
-              onTap: () {
-                BankrollController.instance.resolveBet(
-                  bet,
-                  .loss,
-                );
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-Widget _buildActionBtn({
-  required String label,
-  required Color color,
-  required IconData icon,
-  required VoidCallback onTap,
-}) {
-  return SizedBox(
-    width: double.infinity,
-    child: ElevatedButton.icon(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color.withValues(alpha: 0.1),
-        foregroundColor: color,
-        padding: .symmetric(vertical: 16),
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: .circular(12),
-          side: BorderSide(
-            color: color.withValues(alpha: 0.5),
+        onPressed: onTap,
+        icon: Icon(icon),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
-      onPressed: onTap,
-      icon: Icon(icon),
-      label: Text(
-        label,
-        style: const TextStyle(fontWeight: .bold),
+    );
+  }
+
+  Widget _buildSummaryCard(
+    String title,
+    String value, {
+    bool isPositive = true,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDark,
+        borderRadius: BorderRadius.circular(24),
       ),
-    ),
-  );
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textGrey,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: isPositive
+                  ? AppColors.neonGreen
+                  : AppColors.errorRed,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBetTile(Bet bet) {
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
+
+    switch (bet.result) {
+      case BetResult.win:
+        statusColor = AppColors.neonGreen;
+        statusIcon = Icons.arrow_outward_rounded;
+        statusText =
+            "+ R\$ ${bet.profit.toStringAsFixed(2)}";
+        break;
+      case BetResult.loss:
+        statusColor = AppColors.errorRed;
+        statusIcon = Icons.arrow_downward_rounded;
+        statusText =
+            "- R\$ ${bet.stake.toStringAsFixed(2)}";
+        break;
+      case BetResult.pending:
+        statusColor = AppColors.textGrey;
+        statusIcon = Icons.access_time_rounded;
+        statusText = "Pendente";
+        break;
+      default:
+        statusColor = AppColors.textGrey;
+        statusIcon = Icons.block;
+        statusText = "Anulada";
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDark,
+        borderRadius: BorderRadius.circular(20),
+        border: bet.result == BetResult.pending
+            ? Border.all(
+                color: AppColors.neonGreen.withValues(
+                  alpha: 0.3,
+                ),
+                width: 1,
+              )
+            : null,
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              statusIcon,
+              color: statusColor,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  bet.matchTitle,
+                  style: const TextStyle(
+                    color: AppColors.textWhite,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  "Odd: ${bet.odd}",
+                  style: const TextStyle(
+                    color: AppColors.textGrey,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            statusText,
+            style: TextStyle(
+              color: statusColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

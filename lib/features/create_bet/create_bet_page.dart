@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:thressfrog_app/core/state/bankroll_controller.dart';
 
+import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/bet_model.dart';
 
@@ -38,25 +38,28 @@ class _CreateBetPageState extends State<CreateBetPage> {
         _oddController.text.replaceAll(',', '.'),
       );
 
+      // Cria o objeto Bet
       final newBet = Bet(
-        id: DateTime.now().microsecondsSinceEpoch
+        id: DateTime.now().millisecondsSinceEpoch
             .toString(),
         matchTitle: _matchController.text,
-        date: .now(),
+        date: DateTime.now(),
         stake: stake,
         odd: odd,
-        result: .pending,
+        result: BetResult.pending,
         notes: _notesController.text,
       );
 
+      // Manda pro Controller
       BankrollController.instance.addBet(newBet);
 
       Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Pulo registrado com sucesso!"),
+          content: Text("Pulo registrado! Boa sorte 🐸"),
           backgroundColor: AppColors.neonGreen,
+          duration: Duration(seconds: 2),
         ),
       );
     }
@@ -73,46 +76,43 @@ class _CreateBetPageState extends State<CreateBetPage> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const .all(20),
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: .start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 "Detalhes da Partida",
                 style: TextStyle(
                   color: AppColors.neonGreen,
-                  fontWeight: .bold,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 16),
 
-              //Input 1: Partida
               _buildInput(
-                label: "Partida (Ex: Pain vs T1)",
+                label: "Partida (Ex: T1 vs Gen.G)",
                 controller: _matchController,
                 icon: Icons.gamepad_outlined,
               ),
 
               const SizedBox(height: 24),
 
-              //Row para colocar ODD e valor lado a lado
               Row(
                 children: [
                   Expanded(
                     child: _buildInput(
-                      label: "Odd",
+                      label: "Odd (Cotação)",
                       controller: _oddController,
                       icon: Icons.trending_up,
                       isNumber: true,
                     ),
                   ),
                   const SizedBox(width: 16),
-
                   Expanded(
                     child: _buildInput(
-                      label: "Valor",
+                      label: "Valor (Stake)",
                       controller: _stakeController,
                       icon: Icons.attach_money,
                       isNumber: true,
@@ -123,18 +123,16 @@ class _CreateBetPageState extends State<CreateBetPage> {
 
               const SizedBox(height: 24),
 
-              //Input 3: Anotações
               _buildInput(
                 label: "Anotações / Estratégia",
                 controller: _notesController,
                 icon: Icons.edit_note,
-                maxLiner: 3,
+                maxLines: 3,
                 isRequired: false,
               ),
 
               const SizedBox(height: 40),
 
-              // Botão de Salvar Gigante
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -148,63 +146,59 @@ class _CreateBetPageState extends State<CreateBetPage> {
       ),
     );
   }
-}
 
-Widget _buildInput({
-  required String label,
-  required TextEditingController controller,
-  required IconData icon,
-  bool isNumber = false,
-  bool isRequired = true,
-  int maxLiner = 1,
-}) {
-  return TextFormField(
-    controller: controller,
-    keyboardType: isNumber
-        ? const .numberWithOptions(decimal: true)
-        : .text,
-    maxLines: maxLiner,
-    style: const TextStyle(color: AppColors.textWhite),
-    cursorColor: AppColors.neonGreen,
-
-    validator: (value) {
-      if (isRequired && (value == null || value.isEmpty)) {
-        return 'Campo obrigatorio';
-      }
-
-      return null;
-    },
-
-    decoration: InputDecoration(
-      labelText: label,
-      labelStyle: const TextStyle(
-        color: AppColors.textGrey,
-      ),
-      prefixIcon: Icon(icon, color: AppColors.neonGreen),
-
-      filled: true,
-      fillColor: AppColors.surfaceDark,
-
-      enabledBorder: OutlineInputBorder(
-        borderRadius: .circular(16),
-        borderSide: .none,
-      ),
-
-      focusedBorder: OutlineInputBorder(
-        borderRadius: .circular(16),
-        borderSide: const BorderSide(
-          color: AppColors.neonGreen,
-          width: 2,
+  Widget _buildInput({
+    required String label,
+    required TextEditingController controller,
+    required IconData icon,
+    bool isNumber = false,
+    bool isRequired = true,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: isNumber
+          ? const TextInputType.numberWithOptions(
+              decimal: true,
+            )
+          : TextInputType.text,
+      maxLines: maxLines,
+      style: const TextStyle(color: AppColors.textWhite),
+      cursorColor: AppColors.neonGreen,
+      validator: (value) {
+        if (isRequired &&
+            (value == null || value.isEmpty)) {
+          return 'Campo obrigatório';
+        }
+        return null;
+      },
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(
+          color: AppColors.textGrey,
+        ),
+        prefixIcon: Icon(icon, color: AppColors.neonGreen),
+        filled: true,
+        fillColor: AppColors.surfaceDark,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(
+            color: AppColors.neonGreen,
+            width: 2,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(
+            color: AppColors.errorRed,
+            width: 1,
+          ),
         ),
       ),
-
-      errorBorder: OutlineInputBorder(
-        borderRadius: .circular(16),
-        borderSide: const BorderSide(
-          color: AppColors.errorRed,
-          width: 2,
-        ),
-      ),
-    ),
-  );
+    );
+  }
 }
