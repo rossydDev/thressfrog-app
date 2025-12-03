@@ -2,41 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 import '../../models/bet_model.dart';
+import '../../models/user_profile.dart'; // Importe o modelo
 
 class BankrollController extends ChangeNotifier {
   static final BankrollController instance =
       BankrollController._();
 
-  // EM VEZ DE LATE, USAMOS GETTERS DIRETOS
-  // Isso é mais seguro: se a caixa estiver aberta, ele pega.
-  // Se não estiver, ele lança um erro mais claro de "Box not found" em vez de LateError.
   Box get _settingsBox => Hive.box('settings');
   Box<Bet> get _betsBox => Hive.box<Bet>('bets');
 
   BankrollController._() {
-    _loadData(); // Mudamos o nome para ficar mais claro
+    _loadData();
   }
 
-  double _currentBalance = 100.00;
+  double _currentBalance =
+      0.0; // Começa zerado até carregar
   List<Bet> _bets = [];
+  UserProfile?
+  _userProfile; // Variável para guardar o perfil
 
   double get currentBalance => _currentBalance;
   List<Bet> get bets => List.unmodifiable(_bets);
+  UserProfile? get userProfile =>
+      _userProfile; // Getter público
 
   void _loadData() {
-    // Bloco de segurança: Tenta carregar, se a caixa não estiver pronta, não quebra o app
     if (!Hive.isBoxOpen('settings') ||
-        !Hive.isBoxOpen('bets')) {
-      print(
-        "⚠️ ERRO CRÍTICO: As caixas do Hive não foram abertas no main.dart!",
-      );
+        !Hive.isBoxOpen('bets'))
       return;
+
+    // 1. Tenta carregar o usuário salvo
+    // O Hive pode retornar dynamic, então fazemos cast
+    if (_settingsBox.containsKey('user_profile')) {
+      _userProfile =
+          _settingsBox.get('user_profile') as UserProfile?;
     }
 
-    _currentBalance = _settingsBox.get(
-      'balance',
-      defaultValue: 100.00,
-    );
+    // 2. Carrega o saldo.
+    // SE tiver saldo salvo, usa.
+    // SE NÃO (primeira vez), usa a banca inicial do perfil ou 0.
+    if (_settingsBox.containsKey('balance')) {
+      _currentBalance = _settingsBox.get('balance');
+    } else if (_userProfile != null) {
+      _currentBalance = _userProfile!.initialBankroll;
+    }
 
     _bets = _betsBox.values.toList();
     _bets.sort((a, b) => b.date.compareTo(a.date));
@@ -44,40 +53,25 @@ class BankrollController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ... Resto dos Getters (winRate, todayProfit) IGUAIS ao anterior ...
-  String get winRate {
-    final finishedBets = _bets
-        .where(
-          (b) =>
-              b.result != BetResult.pending &&
-              b.result != BetResult.voided,
-        )
-        .toList();
-    if (finishedBets.isEmpty) return "0%";
-    final wins = finishedBets
-        .where((b) => b.result == BetResult.win)
-        .length;
-    final rate = (wins / finishedBets.length) * 100;
-    return "${rate.toStringAsFixed(0)}%";
-  }
-
-  double get todayProfit {
-    double total = 0;
-    for (var bet in _bets) {
-      if (bet.result != BetResult.pending) {
-        total += bet.profit;
-      }
-    }
-    return total;
-  }
-
   // --- AÇÕES ---
+
+  // Método chamado pela tela de Onboarding
+  void setUserProfile(UserProfile user) {
+    _userProfile = user;
+    _currentBalance =
+        user.initialBankroll; // Define a banca inicial
+
+    // Salva tudo no disco
+    _settingsBox.put('user_profile', user);
+    _settingsBox.put('balance', _currentBalance);
+
+    notifyListeners();
+  }
 
   void addBet(Bet bet) {
     _bets.insert(0, bet);
     _currentBalance -= bet.stake;
 
-    // Acesso direto via getter seguro
     _betsBox.put(bet.id, bet);
     _settingsBox.put('balance', _currentBalance);
 
@@ -106,7 +100,6 @@ class BankrollController extends ChangeNotifier {
       _bets[index] = updatedBet;
     }
 
-    // Acesso direto via getter seguro
     _betsBox.put(updatedBet.id, updatedBet);
     _settingsBox.put('balance', _currentBalance);
 
@@ -117,7 +110,38 @@ class BankrollController extends ChangeNotifier {
     _currentBalance = 100.00;
     _bets.clear();
     _betsBox.clear();
+    _settingsBox.delete(
+      'user_profile',
+    ); // Apaga o usuário também
     _settingsBox.put('balance', 100.00);
+    _userProfile = null;
     notifyListeners();
+  }
+
+  // Helper getters
+  String get winRate {
+    final finishedBets = _bets
+        .where(
+          (b) =>
+              b.result != BetResult.pending &&
+              b.result != BetResult.voided,
+        )
+        .toList();
+    if (finishedBets.isEmpty) return "0%";
+    final wins = finishedBets
+        .where((b) => b.result == BetResult.win)
+        .length;
+    final rate = (wins / finishedBets.length) * 100;
+    return "${rate.toStringAsFixed(0)}%";
+  }
+
+  double get todayProfit {
+    double total = 0;
+    for (var bet in _bets) {
+      if (bet.result != BetResult.pending) {
+        total += bet.profit;
+      }
+    }
+    return total;
   }
 }

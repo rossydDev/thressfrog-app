@@ -21,6 +21,27 @@ class _CreateBetPageState extends State<CreateBetPage> {
   final _notesController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _prefillStake();
+  }
+
+  void _prefillStake() {
+    final controller = BankrollController.instance;
+    final user = controller.userProfile;
+    final currentBank = controller.currentBalance;
+
+    if (user != null) {
+      final suggestedValue = user.suggestedStake(
+        currentBank,
+      );
+
+      _stakeController.text = suggestedValue
+          .toStringAsFixed(2);
+    }
+  }
+
+  @override
   void dispose() {
     _matchController.dispose();
     _oddController.dispose();

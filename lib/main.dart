@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart'; // Import do Hive
+import 'package:hive_flutter/hive_flutter.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/home/home_page.dart';
-import 'models/bet_model.dart'; // Import para registrar os Adapters
+import 'features/onboarding/onboarding_page.dart'; // Importe o onboarding
+import 'models/bet_model.dart';
+import 'models/user_profile.dart'; // Importe o user profile
 
 void main() async {
-  // Garante que o motor do Flutter tá pronto
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Inicializa o Hive no celular
   await Hive.initFlutter();
 
-  // Registra os "tradutores" que o comando da Etapa 3 criou
-  Hive.registerAdapter(BetResultAdapter());
-  Hive.registerAdapter(BetAdapter());
+  // Registrar Adapters (Na ordem dos TypeIDs)
+  Hive.registerAdapter(BetResultAdapter()); // ID 0
+  Hive.registerAdapter(BetAdapter()); // ID 1
+  Hive.registerAdapter(InvestorProfileAdapter()); // ID 2
+  Hive.registerAdapter(UserProfileAdapter()); // ID 3
 
-  // Abre as caixas (Tabelas)
-  // Box 'settings': para saldo
+  // Abrir caixas
   await Hive.openBox('settings');
-  // Box 'bets': para a lista de apostas
   await Hive.openBox<Bet>('bets');
 
   runApp(const ThressFrogApp());
@@ -30,11 +29,20 @@ class ThressFrogApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Lógica do Porteiro:
+    // Verifica se já existe um 'user_profile' salvo na caixa de settings
+    final settingsBox = Hive.box('settings');
+    final hasUser = settingsBox.containsKey('user_profile');
+
     return MaterialApp(
       title: 'ThressFrog',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: const HomePage(),
+
+      // Se tem usuário -> Home. Se não tem -> Onboarding.
+      home: hasUser
+          ? const HomePage()
+          : const OnboardingPage(),
     );
   }
 }
