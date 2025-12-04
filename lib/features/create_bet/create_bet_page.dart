@@ -5,8 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../models/bet_model.dart';
 
 class CreateBetPage extends StatefulWidget {
-  final Bet?
-  betToEdit; // Parâmetro opcional: Se vier, é Edição.
+  final Bet? betToEdit;
 
   const CreateBetPage({super.key, this.betToEdit});
 
@@ -26,7 +25,6 @@ class _CreateBetPageState extends State<CreateBetPage> {
   @override
   void initState() {
     super.initState();
-    // Inicializa os controllers com dados existentes (Edição) ou vazios (Criação)
     _matchController = TextEditingController(
       text: widget.betToEdit?.matchTitle ?? '',
     );
@@ -40,7 +38,6 @@ class _CreateBetPageState extends State<CreateBetPage> {
       text: widget.betToEdit?.notes ?? '',
     );
 
-    // Se for criação nova, tenta preencher a stake sugerida
     if (widget.betToEdit == null) {
       _prefillStake();
     }
@@ -77,7 +74,34 @@ class _CreateBetPageState extends State<CreateBetPage> {
         _oddController.text.replaceAll(',', '.'),
       );
 
-      // Se for edição, mantém o ID e a Data original. Se for novo, cria novos.
+      // --- A TRAVA DE SEGURANÇA ---
+      // Pegamos o saldo atual
+      final currentBalance =
+          BankrollController.instance.currentBalance;
+
+      // Se for edição, precisamos considerar que o valor da aposta antiga vai voltar pra banca
+      // Se for nova, é direto.
+      double availableFunds = currentBalance;
+      if (widget.betToEdit != null) {
+        availableFunds += widget
+            .betToEdit!
+            .stake; // Devolve a stake antiga virtualmente para checar
+      }
+
+      if (stake > availableFunds) {
+        // Bloqueia e avisa
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Saldo insuficiente! Você tem apenas R\$ ${availableFunds.toStringAsFixed(2)}",
+            ),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+        return; // Para tudo aqui!
+      }
+      // ----------------------------
+
       final isEditing = widget.betToEdit != null;
 
       final newBet = Bet(
@@ -93,8 +117,7 @@ class _CreateBetPageState extends State<CreateBetPage> {
         odd: odd,
         result: isEditing
             ? widget.betToEdit!.result
-            : BetResult
-                  .pending, // Mantém o resultado se editando
+            : BetResult.pending,
         notes: _notesController.text,
       );
 

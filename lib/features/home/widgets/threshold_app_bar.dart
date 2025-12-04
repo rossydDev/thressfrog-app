@@ -9,7 +9,7 @@ class ThresholdAppBar extends StatelessWidget
   const ThresholdAppBar({super.key});
 
   @override
-  Size get preferredSize => const Size.fromHeight(80); // Mais alto que o padrão
+  Size get preferredSize => const Size.fromHeight(80);
 
   @override
   Widget build(BuildContext context) {
@@ -19,213 +19,155 @@ class ThresholdAppBar extends StatelessWidget
         final controller = BankrollController.instance;
         final user = controller.userProfile;
 
-        final lossProgress = controller.stopLossProgress;
-        final winProgress = controller.stopWinProgress;
+        // Dados de Gamificação
+        final level = user?.currentLevel ?? 1;
+        final xpProgress = user?.progressToLevelUp ?? 0.0;
+        final xpText =
+            "${user?.currentXP.toInt()}/${user?.xpToNextLevel.toInt()} XP";
 
         return AppBar(
           toolbarHeight: 80,
           backgroundColor: AppColors.deepBlack,
           titleSpacing: 0,
           elevation: 0,
-          automaticallyImplyLeading:
-              false, // Remove seta de voltar padrão
+          automaticallyImplyLeading: false,
           title: Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
+              horizontal: 20.0,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Linha 1: Identidade e Botão Config
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          user?.animalEmoji ?? "🐸",
-                          style: const TextStyle(
-                            fontSize: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          "Olá, ${user?.name ?? 'Invocador'}",
-                          style: const TextStyle(
-                            color: AppColors.textWhite,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ],
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.settings,
-                        color: AppColors.textGrey,
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const SettingsPage(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-
-                // Linha 2: As Barras de Threshold (Visual Gamer)
+                // 1. AVATAR E NÍVEL (Esquerda)
                 Stack(
-                  alignment: Alignment.center,
+                  alignment: Alignment.bottomRight,
                   children: [
-                    // Fundo do trilho
                     Container(
-                      height: 6,
-                      width: double.infinity,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
                         color: AppColors.surfaceDark,
-                        borderRadius: BorderRadius.circular(
-                          3,
-                        ),
-                      ),
-                    ),
-
-                    Row(
-                      children: [
-                        // Lado ESQUERDO (Prejuízo/Stop Loss)
-                        Expanded(
-                          child: Align(
-                            alignment:
-                                Alignment.centerRight,
-                            child: FractionallySizedBox(
-                              widthFactor: lossProgress == 0
-                                  ? 0.0
-                                  : lossProgress,
-                              child: Container(
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: AppColors.errorRed,
-                                  borderRadius:
-                                      const BorderRadius.horizontal(
-                                        left:
-                                            Radius.circular(
-                                              3,
-                                            ),
-                                      ),
-                                  boxShadow: [
-                                    if (lossProgress > 0.8)
-                                      BoxShadow(
-                                        color: AppColors
-                                            .errorRed
-                                            .withValues(
-                                              alpha: 0.6,
-                                            ),
-                                        blurRadius: 6,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Divisor Central (Zero)
-                        Container(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.neonGreen,
                           width: 2,
-                          height: 10,
-                          color: AppColors.textWhite,
-                        ),
-
-                        // Lado DIREITO (Lucro/Stop Win)
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: FractionallySizedBox(
-                              widthFactor: winProgress == 0
-                                  ? 0.0
-                                  : winProgress,
-                              child: Container(
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color:
-                                      AppColors.neonGreen,
-                                  borderRadius:
-                                      const BorderRadius.horizontal(
-                                        right:
-                                            Radius.circular(
-                                              3,
-                                            ),
-                                      ),
-                                  boxShadow: [
-                                    if (winProgress >= 1.0)
-                                      BoxShadow(
-                                        color: AppColors
-                                            .neonGreen
-                                            .withValues(
-                                              alpha: 0.6,
-                                            ),
-                                        blurRadius: 6,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                // Linha 3: Textos de Status
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Valor do Stop Loss em R$
-                      Text(
-                        "-R\$${(controller.stopLossValue).toStringAsFixed(0)}",
-                        style: const TextStyle(
-                          color: AppColors.errorRed,
-                          fontSize: 10,
                         ),
                       ),
-
-                      // Status Central
-                      Text(
-                        controller.isStopLossHit
-                            ? "STOP LOSS!"
-                            : (controller.isStopWinHit
-                                  ? "META BATIDA!"
-                                  : "EM JOGO"),
-                        style: TextStyle(
-                          color: controller.isStopLossHit
-                              ? AppColors.errorRed
-                              : (controller.isStopWinHit
-                                    ? AppColors.neonGreen
-                                    : AppColors.textGrey),
+                      child: Center(
+                        child: Text(
+                          user?.animalEmoji ?? "🐸",
+                          style: const TextStyle(
+                            fontSize: 26,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Badge do Nível
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.neonGreen,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        "$level",
+                        style: const TextStyle(
+                          color: AppColors.deepBlack,
                           fontWeight: FontWeight.bold,
                           fontSize: 10,
                         ),
                       ),
+                    ),
+                  ],
+                ),
 
-                      // Valor do Stop Win em R$
-                      Text(
-                        "+R\$${(controller.stopWinValue).toStringAsFixed(0)}",
-                        style: const TextStyle(
-                          color: AppColors.neonGreen,
-                          fontSize: 10,
+                const SizedBox(width: 16),
+
+                // 2. BARRA DE XP E NOME (Centro Expandido)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    mainAxisAlignment:
+                        MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            user?.name ?? 'Invocador',
+                            style: const TextStyle(
+                              color: AppColors.textWhite,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            xpText,
+                            style: const TextStyle(
+                              color: AppColors.neonGreen,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+
+                      // Barra de XP
+                      Container(
+                        height: 8,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceDark,
+                          borderRadius:
+                              BorderRadius.circular(4),
+                        ),
+                        child: FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: xpProgress == 0
+                              ? 0.0
+                              : xpProgress,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.neonGreen,
+                              borderRadius:
+                                  BorderRadius.circular(4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.neonGreen
+                                      .withValues(
+                                        alpha: 0.5,
+                                      ),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // 3. BOTÃO CONFIG (Direita)
+                IconButton(
+                  icon: const Icon(
+                    Icons.settings,
+                    color: AppColors.textGrey,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const SettingsPage(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

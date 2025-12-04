@@ -43,7 +43,6 @@ class BankrollController extends ChangeNotifier {
     _bets = _betsBox.values.toList();
     // Ordena da mais nova para a mais antiga (Lista da UI)
     _bets.sort((a, b) => b.date.compareTo(a.date));
-
     notifyListeners();
   }
 
@@ -62,13 +61,53 @@ class BankrollController extends ChangeNotifier {
 
   void addBet(Bet bet) {
     _bets.insert(0, bet);
-    _currentBalance -=
-        bet.stake; // O dinheiro sai da banca ao apostar
-
+    _currentBalance -= bet.stake;
     _betsBox.put(bet.id, bet);
     _settingsBox.put('balance', _currentBalance);
 
+    if (_userProfile != null) {
+      _checkAndAward(bet);
+    }
+
     notifyListeners();
+  }
+
+  void _checkAndAward(Bet bet) {
+    final suggested = _userProfile!.suggestedStake(
+      _currentBalance * bet.stake,
+    );
+    final bool isStakeCorrect =
+        bet.stake <= (suggested + 1.0);
+
+    final bool isRespectingLimits =
+        !isStopLossHit && !isStopWinHit;
+
+    if (isStakeCorrect && isRespectingLimits) {
+      _grantXP(10);
+    }
+  }
+
+  void _grantXP(double amount) {
+    if (_userProfile == null) {
+      return;
+    }
+
+    double newXP = _userProfile!.currentXP + amount;
+    int newLevel = _userProfile!.currentLevel;
+    double xpNeeded = _userProfile!.xpToNextLevel;
+
+    // Level Up! 🆙
+    if (newXP >= xpNeeded) {
+      newXP -= xpNeeded;
+      newLevel++;
+    }
+
+    final updatedUser = _userProfile!.copyWith(
+      currentXP: newXP,
+      currentLevel: newLevel,
+    );
+
+    setUserProfile(updatedUser);
   }
 
   void resolveBet(Bet bet, BetResult newResult) {

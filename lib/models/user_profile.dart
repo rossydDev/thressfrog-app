@@ -21,11 +21,16 @@ class UserProfile {
   @HiveField(2)
   final InvestorProfile profile;
 
-  // NOVOS CAMPOS: Porcentagens customizáveis
   @HiveField(3)
   final double stopWinPercentage;
   @HiveField(4)
   final double stopLossPercentage;
+
+  // NOVOS CAMPOS DE GAMIFICAÇÃO
+  @HiveField(5)
+  final int currentLevel;
+  @HiveField(6)
+  final double currentXP;
 
   UserProfile({
     required this.name,
@@ -33,12 +38,21 @@ class UserProfile {
     required this.profile,
     double? stopWinPercentage,
     double? stopLossPercentage,
+    this.currentLevel = 1, // Começa no Nível 1
+    this.currentXP = 0.0, // Começa com 0 XP
   }) : stopWinPercentage =
            stopWinPercentage ?? _defaultWin(profile),
        stopLossPercentage =
            stopLossPercentage ?? _defaultLoss(profile);
 
-  // MÉTODOS ESTÁTICOS DE AJUDA
+  // Lógica de RPG: XP necessário para o próximo nível
+  // Fórmula: Nível * 100 (Ex: Nvl 1 precisa de 100XP, Nvl 2 precisa de 200XP...)
+  double get xpToNextLevel => currentLevel * 100.0;
+
+  double get progressToLevelUp =>
+      (currentXP / xpToNextLevel).clamp(0.0, 1.0);
+
+  // Métodos estáticos mantidos
   static double _defaultWin(InvestorProfile p) {
     if (p == InvestorProfile.turtle) return 0.03;
     if (p == InvestorProfile.alligator) return 0.10;
@@ -64,5 +78,29 @@ class UserProfile {
     if (profile == InvestorProfile.turtle) return "🐢";
     if (profile == InvestorProfile.alligator) return "🐊";
     return "🐸";
+  }
+
+  // Helper para criar uma cópia atualizada (Imutabilidade)
+  UserProfile copyWith({
+    String? name,
+    double? initialBankroll,
+    InvestorProfile? profile,
+    double? stopWinPercentage,
+    double? stopLossPercentage,
+    int? currentLevel,
+    double? currentXP,
+  }) {
+    return UserProfile(
+      name: name ?? this.name,
+      initialBankroll:
+          initialBankroll ?? this.initialBankroll,
+      profile: profile ?? this.profile,
+      stopWinPercentage:
+          stopWinPercentage ?? this.stopWinPercentage,
+      stopLossPercentage:
+          stopLossPercentage ?? this.stopLossPercentage,
+      currentLevel: currentLevel ?? this.currentLevel,
+      currentXP: currentXP ?? this.currentXP,
+    );
   }
 }
