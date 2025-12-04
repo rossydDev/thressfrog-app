@@ -5,7 +5,10 @@ import '../../core/theme/app_theme.dart';
 import '../../models/bet_model.dart';
 
 class CreateBetPage extends StatefulWidget {
-  const CreateBetPage({super.key});
+  final Bet?
+  betToEdit; // Parâmetro opcional: Se vier, é Edição.
+
+  const CreateBetPage({super.key, this.betToEdit});
 
   @override
   State<CreateBetPage> createState() =>
@@ -15,27 +18,42 @@ class CreateBetPage extends StatefulWidget {
 class _CreateBetPageState extends State<CreateBetPage> {
   final _formKey = GlobalKey<FormState>();
 
-  final _matchController = TextEditingController();
-  final _oddController = TextEditingController();
-  final _stakeController = TextEditingController();
-  final _notesController = TextEditingController();
+  late TextEditingController _matchController;
+  late TextEditingController _oddController;
+  late TextEditingController _stakeController;
+  late TextEditingController _notesController;
 
   @override
   void initState() {
     super.initState();
-    _prefillStake();
+    // Inicializa os controllers com dados existentes (Edição) ou vazios (Criação)
+    _matchController = TextEditingController(
+      text: widget.betToEdit?.matchTitle ?? '',
+    );
+    _oddController = TextEditingController(
+      text: widget.betToEdit?.odd.toString() ?? '',
+    );
+    _stakeController = TextEditingController(
+      text: widget.betToEdit?.stake.toString() ?? '',
+    );
+    _notesController = TextEditingController(
+      text: widget.betToEdit?.notes ?? '',
+    );
+
+    // Se for criação nova, tenta preencher a stake sugerida
+    if (widget.betToEdit == null) {
+      _prefillStake();
+    }
   }
 
   void _prefillStake() {
     final controller = BankrollController.instance;
     final user = controller.userProfile;
     final currentBank = controller.currentBalance;
-
     if (user != null) {
       final suggestedValue = user.suggestedStake(
         currentBank,
       );
-
       _stakeController.text = suggestedValue
           .toStringAsFixed(2);
     }
@@ -59,28 +77,47 @@ class _CreateBetPageState extends State<CreateBetPage> {
         _oddController.text.replaceAll(',', '.'),
       );
 
-      // Cria o objeto Bet
+      // Se for edição, mantém o ID e a Data original. Se for novo, cria novos.
+      final isEditing = widget.betToEdit != null;
+
       final newBet = Bet(
-        id: DateTime.now().millisecondsSinceEpoch
-            .toString(),
+        id: isEditing
+            ? widget.betToEdit!.id
+            : DateTime.now().millisecondsSinceEpoch
+                  .toString(),
         matchTitle: _matchController.text,
-        date: DateTime.now(),
+        date: isEditing
+            ? widget.betToEdit!.date
+            : DateTime.now(),
         stake: stake,
         odd: odd,
-        result: BetResult.pending,
+        result: isEditing
+            ? widget.betToEdit!.result
+            : BetResult
+                  .pending, // Mantém o resultado se editando
         notes: _notesController.text,
       );
 
-      // Manda pro Controller
-      BankrollController.instance.addBet(newBet);
+      if (isEditing) {
+        BankrollController.instance.updateBet(
+          widget.betToEdit!,
+          newBet,
+        );
+      } else {
+        BankrollController.instance.addBet(newBet);
+      }
 
       Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Pulo registrado! Boa sorte 🐸"),
+        SnackBar(
+          content: Text(
+            isEditing
+                ? "Pulo corrigido!"
+                : "Pulo registrado! Boa sorte 🐸",
+          ),
           backgroundColor: AppColors.neonGreen,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -88,9 +125,13 @@ class _CreateBetPageState extends State<CreateBetPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.betToEdit != null;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("NOVO PULO"),
+        title: Text(
+          isEditing ? "EDITAR PULO" : "NOVO PULO",
+        ),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           onPressed: () => Navigator.pop(context),
@@ -158,7 +199,11 @@ class _CreateBetPageState extends State<CreateBetPage> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _submitForm,
-                  child: const Text("REGISTRAR PULO"),
+                  child: Text(
+                    isEditing
+                        ? "SALVAR ALTERAÇÕES"
+                        : "REGISTRAR PULO",
+                  ),
                 ),
               ),
             ],

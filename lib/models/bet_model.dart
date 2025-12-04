@@ -63,4 +63,16 @@ class Bet {
   }
 
   bool get isGreen => result == BetResult.win;
+
+  double get netImpact {
+    switch (result) {
+      case .pending:
+      case .loss:
+        return -stake;
+      case .win:
+        return potentialReturn - stake;
+      case .voided:
+        return 0.0;
+    }
+  }
 }

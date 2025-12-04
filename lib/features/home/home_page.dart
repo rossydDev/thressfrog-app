@@ -132,15 +132,11 @@ class HomePage extends StatelessWidget {
                           itemBuilder: (context, index) {
                             final bet = bets[index];
                             return GestureDetector(
-                              onTap: () {
-                                if (bet.result ==
-                                    BetResult.pending) {
+                              onTap: () =>
                                   _showResolveOptions(
                                     context,
                                     bet,
-                                  );
-                                }
-                              },
+                                  ),
                               child: _buildBetTile(bet),
                             );
                           },
@@ -182,6 +178,8 @@ class HomePage extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surfaceDark,
+      isScrollControlled:
+          true, // Permite o menu crescer se precisar
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(24),
@@ -189,55 +187,195 @@ class HomePage extends StatelessWidget {
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.fromLTRB(
+            24,
+            24,
+            24,
+            40,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                "Resultado de ${bet.matchTitle}",
-                style: const TextStyle(
-                  color: AppColors.textWhite,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              // Cabeçalho com o Título e Botão de Fechar discreto
+              Row(
+                mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      bet.matchTitle,
+                      style: const TextStyle(
+                        color: AppColors.textWhite,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      color: AppColors.textGrey,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
-              _buildActionBtn(
-                label: "GREEN (Venceu)",
-                color: AppColors.neonGreen,
-                icon: Icons.trending_up,
+
+              // SEÇÃO 1: Definir Resultado (Só mostra se ainda estiver pendente)
+              if (bet.result == BetResult.pending) ...[
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "DEFINIR RESULTADO",
+                    style: TextStyle(
+                      color: AppColors.textGrey,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionBtnCompact(
+                        label: "GREEN",
+                        color: AppColors.neonGreen,
+                        icon: Icons.trending_up,
+                        onTap: () {
+                          BankrollController.instance
+                              .resolveBet(
+                                bet,
+                                BetResult.win,
+                              );
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionBtnCompact(
+                        label: "RED",
+                        color: AppColors.errorRed,
+                        icon: Icons.trending_down,
+                        onTap: () {
+                          BankrollController.instance
+                              .resolveBet(
+                                bet,
+                                BetResult.loss,
+                              );
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildActionBtnCompact(
+                  label: "ANULADA / REEMBOLSO",
+                  color: AppColors.textGrey,
+                  icon: Icons.refresh,
+                  onTap: () {
+                    BankrollController.instance.resolveBet(
+                      bet,
+                      BetResult.voided,
+                    );
+                    Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // SEÇÃO 2: Gerenciamento (Editar / Excluir)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "GERENCIAR",
+                  style: TextStyle(
+                    color: AppColors.textGrey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              _buildActionBtnCompact(
+                label: "EDITAR INFORMAÇÕES",
+                color: Colors.blueAccent,
+                icon: Icons.edit,
                 onTap: () {
-                  BankrollController.instance.resolveBet(
-                    bet,
-                    BetResult.win,
+                  Navigator.pop(
+                    context,
+                  ); // Fecha o menu primeiro
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          CreateBetPage(betToEdit: bet),
+                    ),
                   );
-                  Navigator.pop(context);
                 },
               ),
               const SizedBox(height: 12),
-              _buildActionBtn(
-                label: "RED (Perdeu)",
-                color: AppColors.errorRed,
-                icon: Icons.trending_down,
+              _buildActionBtnCompact(
+                label: "EXCLUIR PULO",
+                color: Colors.red.shade900,
+                icon: Icons.delete_forever,
                 onTap: () {
-                  BankrollController.instance.resolveBet(
-                    bet,
-                    BetResult.loss,
+                  // Confirmação antes de excluir
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor:
+                          AppColors.surfaceDark,
+                      title: const Text(
+                        "Excluir Pulo?",
+                        style: TextStyle(
+                          color: AppColors.textWhite,
+                        ),
+                      ),
+                      content: const Text(
+                        "Isso devolverá o valor da aposta para sua banca e removerá o registro.",
+                        style: TextStyle(
+                          color: AppColors.textGrey,
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.pop(ctx),
+                          child: const Text(
+                            "Cancelar",
+                            style: TextStyle(
+                              color: AppColors.textWhite,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            BankrollController.instance
+                                .deleteBet(bet);
+                            Navigator.pop(
+                              ctx,
+                            ); // Fecha Dialog
+                            Navigator.pop(
+                              context,
+                            ); // Fecha BottomSheet
+                          },
+                          child: const Text(
+                            "EXCLUIR",
+                            style: TextStyle(
+                              color: AppColors.errorRed,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   );
-                  Navigator.pop(context);
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildActionBtn(
-                label: "Anulada / Reembolso",
-                color: AppColors.textGrey,
-                icon: Icons.refresh,
-                onTap: () {
-                  BankrollController.instance.resolveBet(
-                    bet,
-                    BetResult.voided,
-                  );
-                  Navigator.pop(context);
                 },
               ),
             ],
@@ -247,7 +385,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildActionBtn({
+  Widget _buildActionBtnCompact({
     required String label,
     required Color color,
     required IconData icon,
@@ -264,7 +402,7 @@ class HomePage extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
-              color: color.withValues(alpha: 0.5),
+              color: color.withValues(alpha: 0.3),
             ),
           ),
         ),

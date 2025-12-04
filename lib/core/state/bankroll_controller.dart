@@ -15,32 +15,25 @@ class BankrollController extends ChangeNotifier {
     _loadData();
   }
 
-  double _currentBalance =
-      0.0; // Começa zerado até carregar
+  double _currentBalance = 0.0;
   List<Bet> _bets = [];
-  UserProfile?
-  _userProfile; // Variável para guardar o perfil
+  UserProfile? _userProfile;
 
   double get currentBalance => _currentBalance;
   List<Bet> get bets => List.unmodifiable(_bets);
-  UserProfile? get userProfile =>
-      _userProfile; // Getter público
+  UserProfile? get userProfile => _userProfile;
 
   void _loadData() {
     if (!Hive.isBoxOpen('settings') ||
-        !Hive.isBoxOpen('bets'))
+        !Hive.isBoxOpen('bets')) {
       return;
+    }
 
-    // 1. Tenta carregar o usuário salvo
-    // O Hive pode retornar dynamic, então fazemos cast
     if (_settingsBox.containsKey('user_profile')) {
       _userProfile =
           _settingsBox.get('user_profile') as UserProfile?;
     }
 
-    // 2. Carrega o saldo.
-    // SE tiver saldo salvo, usa.
-    // SE NÃO (primeira vez), usa a banca inicial do perfil ou 0.
     if (_settingsBox.containsKey('balance')) {
       _currentBalance = _settingsBox.get('balance');
     } else if (_userProfile != null) {
@@ -58,10 +51,8 @@ class BankrollController extends ChangeNotifier {
   // Método chamado pela tela de Onboarding
   void setUserProfile(UserProfile user) {
     _userProfile = user;
-    _currentBalance =
-        user.initialBankroll; // Define a banca inicial
+    _currentBalance = user.initialBankroll;
 
-    // Salva tudo no disco
     _settingsBox.put('user_profile', user);
     _settingsBox.put('balance', _currentBalance);
 
@@ -79,30 +70,65 @@ class BankrollController extends ChangeNotifier {
   }
 
   void resolveBet(Bet bet, BetResult newResult) {
-    if (newResult == BetResult.win) {
-      _currentBalance += (bet.stake * bet.odd);
-    } else if (newResult == BetResult.voided) {
-      _currentBalance += bet.stake;
+    _currentBalance -= bet.netImpact;
+
+    double newImpact = 0;
+
+    if (newResult == .win) {
+      newImpact = bet.potentialReturn - bet.stake;
+    } else if (newResult == .loss) {
+      newImpact = -bet.stake;
+    } else {
+      newImpact = 0;
     }
 
-    final updatedBet = Bet(
+    _currentBalance += newImpact;
+
+    final updateBet = Bet(
       id: bet.id,
       matchTitle: bet.matchTitle,
       date: bet.date,
-      stake: bet.stake,
       odd: bet.odd,
+      stake: bet.stake,
       notes: bet.notes,
       result: newResult,
     );
 
     final index = _bets.indexWhere((b) => b.id == bet.id);
+
     if (index != -1) {
-      _bets[index] = updatedBet;
+      _bets[index] = updateBet;
     }
 
-    _betsBox.put(updatedBet.id, updatedBet);
+    _betsBox.put(updateBet.id, updateBet);
     _settingsBox.put('balance', _currentBalance);
+    notifyListeners();
+  }
 
+  void deleteBet(Bet bet) {
+    _currentBalance -= bet.netImpact;
+
+    _bets.removeWhere((b) => b.id == bet.id);
+    _betsBox.delete(bet.id);
+
+    _settingsBox.put("balance", _currentBalance);
+    notifyListeners();
+  }
+
+  void updateBet(Bet oldBet, Bet newBet) {
+    _currentBalance -= oldBet.netImpact;
+
+    _currentBalance += newBet.netImpact;
+
+    final index = _bets.indexWhere(
+      (b) => b.id == oldBet.id,
+    );
+    if (index != -1) {
+      _bets[index] = newBet;
+    }
+
+    _betsBox.put(newBet.id, newBet);
+    _settingsBox.put('balance', _currentBalance);
     notifyListeners();
   }
 
