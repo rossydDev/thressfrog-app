@@ -55,4 +55,16 @@ class UserProfile {
     }
     return "O Sapo";
   }
+
+  String get animalEmoji {
+    if (profile == .turtle) {
+      return '🐢';
+    }
+
+    if (profile == .alligator) {
+      return '🐊';
+    }
+
+    return '🐸';
+  }
 }

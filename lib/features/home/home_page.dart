@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thressfrog_app/features/home/widgets/bankroll_chart.dart';
 
 import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
@@ -87,6 +88,10 @@ class HomePage extends StatelessWidget {
                     ),
                   ],
                 ),
+
+                const SizedBox(height: 24),
+
+                const BankrollChart(),
 
                 const SizedBox(height: 30),
 

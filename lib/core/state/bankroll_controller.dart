@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
@@ -169,5 +170,34 @@ class BankrollController extends ChangeNotifier {
       }
     }
     return total;
+  }
+
+  List<FlSpot> get chartData {
+    if (_userProfile == null) {
+      return [];
+    }
+
+    double runningBalance = _userProfile!.initialBankroll;
+    final List<FlSpot> spots = [];
+
+    spots.add(FlSpot(0, runningBalance));
+
+    final chronologicalBets = _bets.reversed.toList();
+
+    for (int i = 0; i < chronologicalBets.length; i++) {
+      final bet = chronologicalBets[i];
+      runningBalance += bet.netImpact;
+
+      spots.add(FlSpot((i + 1).toDouble(), runningBalance));
+    }
+
+    if (spots.length > 20) {
+      final last20 = spots.sublist(spots.length - 20);
+      return last20
+          .map((e) => FlSpot(e.x - last20.first.x, e.y))
+          .toList();
+    }
+
+    return spots;
   }
 }
