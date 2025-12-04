@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:thressfrog_app/features/home/widgets/bankroll_chart.dart';
+import 'package:thressfrog_app/features/home/widgets/threshold_app_bar.dart';
 
 import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
@@ -21,25 +22,7 @@ class HomePage extends StatelessWidget {
         final profit = controller.todayProfit;
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text("THRESSFROG"),
-            centerTitle: false,
-            actions: [
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(
-                  Icons.notifications_none_rounded,
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  // Reset de emergência para testes
-                  // BankrollController.instance.resetBankroll();
-                },
-                icon: const Icon(Icons.grid_view_rounded),
-              ),
-            ],
-          ),
+          appBar: ThresholdAppBar(),
           body: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: 20.0,

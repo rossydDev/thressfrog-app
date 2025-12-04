@@ -18,22 +18,16 @@ enum BetResult {
 class Bet {
   @HiveField(0)
   final String id;
-
   @HiveField(1)
   final String matchTitle;
-
   @HiveField(2)
   final DateTime date;
-
   @HiveField(3)
   final double stake;
-
   @HiveField(4)
   final double odd;
-
   @HiveField(5)
   final BetResult result;
-
   @HiveField(6)
   final String? notes;
 
@@ -47,7 +41,6 @@ class Bet {
     this.notes,
   });
 
-  // Lógica de Negócio (Getters) continua intacta
   double get potentialReturn => stake * odd;
 
   double get profit {
@@ -64,14 +57,15 @@ class Bet {
 
   bool get isGreen => result == BetResult.win;
 
+  // CORREÇÃO AQUI: Usando o nome completo do Enum (BetResult.x)
   double get netImpact {
     switch (result) {
-      case .pending:
-      case .loss:
+      case BetResult.pending:
+      case BetResult.loss:
         return -stake;
-      case .win:
+      case BetResult.win:
         return potentialReturn - stake;
-      case .voided:
+      case BetResult.voided:
         return 0.0;
     }
   }

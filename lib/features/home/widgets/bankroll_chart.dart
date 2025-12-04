@@ -20,27 +20,19 @@ class BankrollChart extends StatelessWidget {
                 ?.animalEmoji ??
             "🐸";
 
-        // 1. BLINDAGEM: Se tiver 0 ou 1 ponto, não desenha gráfico, mostra aviso.
-        // Isso evita erros de cálculo de largura e crashes.
         if (spots.length <= 1) {
           return _buildEmptyState();
         }
 
-        // 2. CÁLCULO DE DIMENSÕES (Lógica Responsiva)
-        // Pegamos a largura da tela
         final screenWidth = MediaQuery.of(
           context,
         ).size.width;
-        // Definimos que cada "Pulo" ocupa 50 pixels de largura
         double chartWidth = spots.length * 50.0;
 
-        // Se a largura calculada for menor que a tela, forçamos ocupar a tela toda
-        // (menos o padding de 40px das margens)
         if (chartWidth < screenWidth - 40) {
           chartWidth = screenWidth - 40;
         }
 
-        // 3. CÁLCULOS DE EIXO Y (ALTURA)
         final yValues = spots.map((e) => e.y).toList();
         double minY = yValues.reduce(
           (a, b) => a < b ? a : b,
@@ -49,8 +41,6 @@ class BankrollChart extends StatelessWidget {
           (a, b) => a > b ? a : b,
         );
 
-        // Se minY e maxY forem iguais (ex: aposta anulada, saldo não mudou),
-        // o gráfico trava. Precisamos dar um "respiro" artificial.
         if (minY == maxY) {
           minY -= 10;
           maxY += 10;
@@ -58,18 +48,14 @@ class BankrollChart extends StatelessWidget {
 
         final buffer = (maxY - minY) * 0.2;
 
-        // 4. ESTRUTURA COM SCROLL
         return SizedBox(
-          height: 200, // Altura fixa do container pai
+          height: 200,
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            reverse:
-                true, // Começa mostrando o FINAL (Direita) - Onde o sapo está
-            physics:
-                const BouncingScrollPhysics(), // Efeito elástico chique
+            reverse: true,
+            physics: const BouncingScrollPhysics(),
             child: Container(
-              width:
-                  chartWidth, // Largura dinâmica! Cresce com as apostas
+              width: chartWidth,
               margin: const EdgeInsets.only(
                 top: 24,
                 bottom: 10,
@@ -77,7 +63,7 @@ class BankrollChart extends StatelessWidget {
               padding: const EdgeInsets.only(
                 right: 32,
                 left: 16,
-              ), // Espaço pro Sapo não cortar
+              ),
               decoration: BoxDecoration(
                 color: AppColors.surfaceDark.withValues(
                   alpha: 0.3,
@@ -92,19 +78,17 @@ class BankrollChart extends StatelessWidget {
                   ),
                   borderData: FlBorderData(show: false),
 
-                  // Limites
                   minY: minY - buffer,
                   maxY: maxY + buffer,
                   minX: spots.first.x,
                   maxX: spots.last.x,
 
-                  // Tooltip
                   lineTouchData: LineTouchData(
                     touchTooltipData: LineTouchTooltipData(
                       getTooltipColor: (_) =>
                           AppColors.surfaceDark,
-                      tooltipBorderRadius: .circular(8),
-                      // Ajuste para o tooltip não sair da tela no scroll
+                      tooltipBorderRadius:
+                          BorderRadius.circular(8),
                       fitInsideHorizontally: true,
                       fitInsideVertically: true,
                       getTooltipItems: (touchedSpots) {
@@ -193,7 +177,9 @@ class BankrollChart extends StatelessWidget {
         children: [
           Icon(
             Icons.show_chart,
-            color: AppColors.textGrey.withValues(alpha: .3),
+            color: AppColors.textGrey.withValues(
+              alpha: 0.3,
+            ),
             size: 40,
           ),
           const SizedBox(height: 8),
@@ -201,7 +187,7 @@ class BankrollChart extends StatelessWidget {
             "Faça mais pulos para ver sua evolução!",
             style: TextStyle(
               color: AppColors.textGrey.withValues(
-                alpha: .5,
+                alpha: 0.5,
               ),
             ),
           ),
@@ -211,7 +197,6 @@ class BankrollChart extends StatelessWidget {
   }
 }
 
-// A Classe Painter continua igual, necessária para desenhar o texto
 class FlDotTextPainter extends FlDotPainter {
   final Text text;
   final Offset offset;

@@ -20,19 +20,25 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       name: fields[0] as String,
       initialBankroll: fields[1] as double,
       profile: fields[2] as InvestorProfile,
+      stopWinPercentage: fields[3] as double?,
+      stopLossPercentage: fields[4] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserProfile obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
       ..write(obj.initialBankroll)
       ..writeByte(2)
-      ..write(obj.profile);
+      ..write(obj.profile)
+      ..writeByte(3)
+      ..write(obj.stopWinPercentage)
+      ..writeByte(4)
+      ..write(obj.stopLossPercentage);
   }
 
   @override
