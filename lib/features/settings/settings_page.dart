@@ -13,8 +13,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final _nameController = TextEditingController();
-  final _bankrollController =
-      TextEditingController(); // Novo controller para banca
+  final _bankrollController = TextEditingController();
 
   double _stopWin = 0.05;
   double _stopLoss = 0.03;
@@ -33,7 +32,6 @@ class _SettingsPageState extends State<SettingsPage> {
       _stopLoss = user.stopLossPercentage;
       _profile = user.profile;
     }
-    // Preenche a banca atual
     _bankrollController.text = currentBalance
         .toStringAsFixed(2);
   }
@@ -42,7 +40,6 @@ class _SettingsPageState extends State<SettingsPage> {
     final currentProfile =
         BankrollController.instance.userProfile;
 
-    // Pega o novo valor da banca (com validação básica)
     final newBalance =
         double.tryParse(
           _bankrollController.text.replaceAll(',', '.'),
@@ -55,11 +52,11 @@ class _SettingsPageState extends State<SettingsPage> {
       profile: _profile,
       stopWinPercentage: _stopWin,
       stopLossPercentage: _stopLoss,
+      // Preserva o XP (Correção do bug anterior)
       currentLevel: currentProfile?.currentLevel ?? 1,
       currentXP: currentProfile?.currentXP ?? 0.0,
     );
 
-    // Salva o perfil e atualiza a banca no controller
     BankrollController.instance.updateUserProfileAndBalance(
       updatedUser,
       newBalance,
@@ -92,7 +89,6 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 16),
 
-            // Input Nome
             TextFormField(
               controller: _nameController,
               style: const TextStyle(
@@ -111,7 +107,6 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 16),
 
-            // Input Banca (Novo)
             TextFormField(
               controller: _bankrollController,
               keyboardType:
@@ -140,7 +135,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
             const SizedBox(height: 16),
 
-            // Dropdown de Perfil (Novo)
+            // Dropdown Inteligente
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: 12,
@@ -148,15 +143,13 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               decoration: BoxDecoration(
                 color: AppColors.surfaceDark,
-                borderRadius: BorderRadius.circular(
-                  4,
-                ), // Borda padrão do input decoration
+                borderRadius: BorderRadius.circular(4),
                 border: Border(
                   bottom: BorderSide(
                     color: Colors.grey.shade700,
                     width: 1,
                   ),
-                ), // Estilo underline padrão
+                ),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<InvestorProfile>(
@@ -174,8 +167,15 @@ class _SettingsPageState extends State<SettingsPage> {
                     if (newValue != null) {
                       setState(() {
                         _profile = newValue;
-                        // Opcional: Atualizar sliders com o padrão do novo perfil?
-                        // _stopWin = UserProfile._defaultWin(newValue); // Método privado, teria que expor
+                        // --- AUTOMAÇÃO AQUI ---
+                        // Ao trocar o perfil, atualizamos os limites para o padrão do animal automaticamente
+                        _stopWin = UserProfile.defaultWin(
+                          newValue,
+                        );
+                        _stopLoss = UserProfile.defaultLoss(
+                          newValue,
+                        );
+                        // ---------------------
                       });
                     }
                   },

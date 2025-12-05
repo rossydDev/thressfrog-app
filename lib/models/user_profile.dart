@@ -26,7 +26,6 @@ class UserProfile {
   @HiveField(4)
   final double stopLossPercentage;
 
-  // NOVOS CAMPOS DE GAMIFICAÇÃO
   @HiveField(5)
   final int currentLevel;
   @HiveField(6)
@@ -38,32 +37,27 @@ class UserProfile {
     required this.profile,
     double? stopWinPercentage,
     double? stopLossPercentage,
-    this.currentLevel = 1, // Começa no Nível 1
-    this.currentXP = 0.0, // Começa com 0 XP
-  }) : stopWinPercentage =
-           stopWinPercentage ?? _defaultWin(profile),
+    this.currentLevel = 1,
+    this.currentXP = 0.0,
+  }) : // Usamos os métodos estáticos públicos agora
+       stopWinPercentage =
+           stopWinPercentage ?? defaultWin(profile),
        stopLossPercentage =
-           stopLossPercentage ?? _defaultLoss(profile);
+           stopLossPercentage ?? defaultLoss(profile);
 
-  // Lógica de RPG: XP necessário para o próximo nível
-  // Fórmula: Nível * 100 (Ex: Nvl 1 precisa de 100XP, Nvl 2 precisa de 200XP...)
-  double get xpToNextLevel => currentLevel * 100.0;
-
-  double get progressToLevelUp =>
-      (currentXP / xpToNextLevel).clamp(0.0, 1.0);
-
-  // Métodos estáticos mantidos
-  static double _defaultWin(InvestorProfile p) {
-    if (p == InvestorProfile.turtle) return 0.03;
-    if (p == InvestorProfile.alligator) return 0.10;
-    return 0.05;
+  // --- TORNAMOS PÚBLICOS (Sem o '_') PARA USAR NA UI ---
+  static double defaultWin(InvestorProfile p) {
+    if (p == InvestorProfile.turtle) return 0.03; // 3%
+    if (p == InvestorProfile.alligator) return 0.10; // 10%
+    return 0.05; // 5%
   }
 
-  static double _defaultLoss(InvestorProfile p) {
-    if (p == InvestorProfile.turtle) return 0.02;
-    if (p == InvestorProfile.alligator) return 0.05;
-    return 0.03;
+  static double defaultLoss(InvestorProfile p) {
+    if (p == InvestorProfile.turtle) return 0.02; // 2%
+    if (p == InvestorProfile.alligator) return 0.05; // 5%
+    return 0.03; // 3%
   }
+  // -----------------------------------------------------
 
   double get stakePercentage {
     if (profile == InvestorProfile.turtle) return 0.01;
@@ -74,13 +68,17 @@ class UserProfile {
   double suggestedStake(double currentBankroll) =>
       currentBankroll * stakePercentage;
 
+  // Lógica de RPG
+  double get xpToNextLevel => currentLevel * 100.0;
+  double get progressToLevelUp =>
+      (currentXP / xpToNextLevel).clamp(0.0, 1.0);
+
   String get animalEmoji {
     if (profile == InvestorProfile.turtle) return "🐢";
     if (profile == InvestorProfile.alligator) return "🐊";
     return "🐸";
   }
 
-  // Helper para criar uma cópia atualizada (Imutabilidade)
   UserProfile copyWith({
     String? name,
     double? initialBankroll,
