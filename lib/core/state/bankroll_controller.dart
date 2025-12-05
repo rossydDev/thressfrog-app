@@ -5,6 +5,18 @@ import 'package:hive/hive.dart';
 import '../../models/bet_model.dart';
 import '../../models/user_profile.dart';
 
+class XPResult {
+  final bool gainedXP;
+  final bool leveledUp;
+  final int xpAmount;
+
+  XPResult({
+    this.gainedXP = false,
+    this.leveledUp = false,
+    this.xpAmount = 0,
+  });
+}
+
 class BankrollController extends ChangeNotifier {
   static final BankrollController instance =
       BankrollController._();
@@ -59,47 +71,55 @@ class BankrollController extends ChangeNotifier {
 
   // --- CRUD (Criação, Edição, Exclusão) ---
 
-  void addBet(Bet bet) {
+  XPResult addBet(Bet bet) {
     _bets.insert(0, bet);
     _currentBalance -= bet.stake;
+
     _betsBox.put(bet.id, bet);
     _settingsBox.put('balance', _currentBalance);
 
+    XPResult result = XPResult();
+
+    // LÓGICA DE GAMIFICAÇÃO
     if (_userProfile != null) {
-      _checkAndAward(bet);
+      result = _checkAndAwardXP(bet);
     }
 
     notifyListeners();
+    return result; // Retorna para a UI saber o que mostrar
   }
 
-  void _checkAndAward(Bet bet) {
+  XPResult _checkAndAwardXP(Bet bet) {
+    // 1. Regra da Stake
     final suggested = _userProfile!.suggestedStake(
-      _currentBalance * bet.stake,
+      _currentBalance + bet.stake,
     );
     final bool isStakeCorrect =
         bet.stake <= (suggested + 1.0);
 
+    // 2. Regra do Limite
     final bool isRespectingLimits =
         !isStopLossHit && !isStopWinHit;
 
     if (isStakeCorrect && isRespectingLimits) {
-      _grantXP(10);
+      return _grantXP(10); // Ganha 10 XP
     }
+    return XPResult(); // Nada aconteceu
   }
 
-  void _grantXP(double amount) {
-    if (_userProfile == null) {
-      return;
-    }
+  XPResult _grantXP(double amount) {
+    if (_userProfile == null) return XPResult();
 
     double newXP = _userProfile!.currentXP + amount;
     int newLevel = _userProfile!.currentLevel;
     double xpNeeded = _userProfile!.xpToNextLevel;
+    bool leveledUp = false;
 
     // Level Up! 🆙
     if (newXP >= xpNeeded) {
       newXP -= xpNeeded;
       newLevel++;
+      leveledUp = true;
     }
 
     final updatedUser = _userProfile!.copyWith(
@@ -108,6 +128,12 @@ class BankrollController extends ChangeNotifier {
     );
 
     setUserProfile(updatedUser);
+
+    return XPResult(
+      gainedXP: true,
+      leveledUp: leveledUp,
+      xpAmount: amount.toInt(),
+    );
   }
 
   void resolveBet(Bet bet, BetResult newResult) {
@@ -271,6 +297,20 @@ class BankrollController extends ChangeNotifier {
     _settingsBox.delete('user_profile');
     _settingsBox.put('balance', 100.00);
     _userProfile = null;
+    notifyListeners();
+  }
+
+  void updateUserProfileAndBalance(
+    UserProfile user,
+    double newBalance,
+  ) {
+    _userProfile = user;
+    _currentBalance = newBalance;
+
+    // Salva no banco
+    _settingsBox.put('user_profile', user);
+    _settingsBox.put('balance', _currentBalance);
+
     notifyListeners();
   }
 }

@@ -74,22 +74,14 @@ class _CreateBetPageState extends State<CreateBetPage> {
         _oddController.text.replaceAll(',', '.'),
       );
 
-      // --- A TRAVA DE SEGURANÇA ---
-      // Pegamos o saldo atual
       final currentBalance =
           BankrollController.instance.currentBalance;
-
-      // Se for edição, precisamos considerar que o valor da aposta antiga vai voltar pra banca
-      // Se for nova, é direto.
       double availableFunds = currentBalance;
       if (widget.betToEdit != null) {
-        availableFunds += widget
-            .betToEdit!
-            .stake; // Devolve a stake antiga virtualmente para checar
+        availableFunds += widget.betToEdit!.stake;
       }
 
       if (stake > availableFunds) {
-        // Bloqueia e avisa
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -98,9 +90,8 @@ class _CreateBetPageState extends State<CreateBetPage> {
             backgroundColor: AppColors.errorRed,
           ),
         );
-        return; // Para tudo aqui!
+        return;
       }
-      // ----------------------------
 
       final isEditing = widget.betToEdit != null;
 
@@ -126,24 +117,106 @@ class _CreateBetPageState extends State<CreateBetPage> {
           widget.betToEdit!,
           newBet,
         );
-      } else {
-        BankrollController.instance.addBet(newBet);
-      }
-
-      Navigator.pop(context);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isEditing
-                ? "Pulo corrigido!"
-                : "Pulo registrado! Boa sorte 🐸",
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Pulo corrigido!"),
+            backgroundColor: AppColors.neonGreen,
           ),
-          backgroundColor: AppColors.neonGreen,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+        );
+      } else {
+        // AQUI É A NOVIDADE: Capturamos o XPResult
+        final xpResult = BankrollController.instance.addBet(
+          newBet,
+        );
+        Navigator.pop(context);
+
+        // Mostramos Feedback Customizado
+        if (xpResult.leveledUp) {
+          _showLevelUpDialog(
+            context,
+          ); // Vamos criar esse dialog jájá
+        } else if (xpResult.gainedXP) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(
+                    Icons.verified,
+                    color: AppColors.deepBlack,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "Pulo registrado! +${xpResult.xpAmount} XP por disciplina 🐸",
+                  ),
+                ],
+              ),
+              backgroundColor: AppColors.neonGreen,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Pulo registrado (Sem XP: Fora da gestão)",
+              ),
+              backgroundColor: AppColors.textGrey,
+            ),
+          );
+        }
+      }
     }
+  }
+
+  // Novo método para mostrar o Dialog de Level Up
+  void _showLevelUpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(
+            color: AppColors.neonGreen,
+            width: 2,
+          ),
+        ),
+        title: const Column(
+          children: [
+            Icon(
+              Icons.stars,
+              color: AppColors.neonGreen,
+              size: 48,
+            ),
+            SizedBox(height: 16),
+            Text(
+              "LEVEL UP!",
+              style: TextStyle(
+                color: AppColors.neonGreen,
+                fontWeight: FontWeight.bold,
+                fontSize: 28,
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          "Parabéns! Sua disciplina te levou para o próximo nível. Continue seguindo o caminho do sapo.",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.textWhite),
+        ),
+        actions: [
+          Center(
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("CONTINUAR"),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
