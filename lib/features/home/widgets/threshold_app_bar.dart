@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thressfrog_app/features/gamification/profile_stats_page.dart';
 
 import '../../../core/state/bankroll_controller.dart';
 import '../../../core/theme/app_theme.dart';
@@ -39,46 +40,57 @@ class ThresholdAppBar extends StatelessWidget
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // 1. AVATAR E NÍVEL (Esquerda)
-                Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceDark,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.neonGreen,
-                          width: 2,
-                        ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ProfileStatsPage(),
                       ),
-                      child: Center(
-                        child: Text(
-                          user?.animalEmoji ?? "🐸",
-                          style: const TextStyle(
-                            fontSize: 26,
+                    );
+                  },
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceDark,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.neonGreen,
+                            width: 2,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            user?.animalEmoji ?? "🐸",
+                            style: const TextStyle(
+                              fontSize: 26,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    // Badge do Nível
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.neonGreen,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        "$level",
-                        style: const TextStyle(
-                          color: AppColors.deepBlack,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                      // Badge do Nível
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppColors.neonGreen,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          "$level",
+                          style: const TextStyle(
+                            color: AppColors.deepBlack,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
 
                 const SizedBox(width: 16),

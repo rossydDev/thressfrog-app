@@ -175,6 +175,7 @@ class _CreateBetPageState extends State<CreateBetPage> {
   void _showLevelUpDialog(BuildContext context) {
     showDialog(
       context: context,
+      barrierDismissible: false, // Obriga a clicar no botão
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(
@@ -182,39 +183,59 @@ class _CreateBetPageState extends State<CreateBetPage> {
           side: const BorderSide(
             color: AppColors.neonGreen,
             width: 2,
-          ),
+          ), // Borda Neon
         ),
-        title: const Column(
+        contentPadding: const EdgeInsets.all(32),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.stars,
-              color: AppColors.neonGreen,
-              size: 48,
+            // Ícone animado (ou estático por enquanto)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.neonGreen.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.auto_awesome,
+                color: AppColors.neonGreen,
+                size: 60,
+              ),
             ),
-            SizedBox(height: 16),
-            Text(
+            const SizedBox(height: 24),
+
+            const Text(
               "LEVEL UP!",
               style: TextStyle(
                 color: AppColors.neonGreen,
                 fontWeight: FontWeight.bold,
-                fontSize: 28,
+                fontSize: 32,
+                letterSpacing: 2.0,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            const Text(
+              "Sua disciplina compensou. Você evoluiu e está mais perto de se tornar um Sapo Rei.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textWhite,
+                fontSize: 16,
+                height: 1.5,
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("CONTINUAR JORNADA"),
               ),
             ),
           ],
         ),
-        content: const Text(
-          "Parabéns! Sua disciplina te levou para o próximo nível. Continue seguindo o caminho do sapo.",
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.textWhite),
-        ),
-        actions: [
-          Center(
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("CONTINUAR"),
-            ),
-          ),
-        ],
       ),
     );
   }
