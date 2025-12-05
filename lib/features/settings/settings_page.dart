@@ -39,7 +39,6 @@ class _SettingsPageState extends State<SettingsPage> {
   void _saveSettings() {
     final currentProfile =
         BankrollController.instance.userProfile;
-
     final newBalance =
         double.tryParse(
           _bankrollController.text.replaceAll(',', '.'),
@@ -52,7 +51,6 @@ class _SettingsPageState extends State<SettingsPage> {
       profile: _profile,
       stopWinPercentage: _stopWin,
       stopLossPercentage: _stopLoss,
-      // Preserva o XP (Correção do bug anterior)
       currentLevel: currentProfile?.currentLevel ?? 1,
       currentXP: currentProfile?.currentXP ?? 0.0,
     );
@@ -67,6 +65,55 @@ class _SettingsPageState extends State<SettingsPage> {
       const SnackBar(
         content: Text("Configurações atualizadas!"),
         backgroundColor: AppColors.neonGreen,
+      ),
+    );
+  }
+
+  // --- NOVO: Lógica de Reset ---
+  void _confirmReset() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        title: const Text(
+          "Zerar Tudo?",
+          style: TextStyle(color: AppColors.errorRed),
+        ),
+        content: const Text(
+          "Isso apagará TODAS as suas apostas, resetará seu Nível e XP. Essa ação não pode ser desfeita.",
+          style: TextStyle(color: AppColors.textWhite),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar"),
+          ),
+          TextButton(
+            onPressed: () {
+              BankrollController.instance
+                  .fullReset(); // Vamos criar este método
+              Navigator.pop(ctx); // Fecha Dialog
+              Navigator.pop(
+                context,
+              ); // Fecha Settings e volta pra Home
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    "Sistema reiniciado com sucesso.",
+                  ),
+                  backgroundColor: AppColors.textGrey,
+                ),
+              );
+            },
+            child: const Text(
+              "ZERAR",
+              style: TextStyle(
+                color: AppColors.errorRed,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -125,11 +172,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   Icons.account_balance_wallet,
                   color: AppColors.neonGreen,
                 ),
-                helperText:
-                    "Use para ajustar saques ou depósitos.",
-                helperStyle: TextStyle(
-                  color: AppColors.textGrey,
-                ),
               ),
             ),
 
@@ -167,15 +209,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     if (newValue != null) {
                       setState(() {
                         _profile = newValue;
-                        // --- AUTOMAÇÃO AQUI ---
-                        // Ao trocar o perfil, atualizamos os limites para o padrão do animal automaticamente
+                        // Automação dos Sliders
                         _stopWin = UserProfile.defaultWin(
                           newValue,
                         );
                         _stopLoss = UserProfile.defaultLoss(
                           newValue,
                         );
-                        // ---------------------
                       });
                     }
                   },
@@ -187,16 +227,15 @@ class _SettingsPageState extends State<SettingsPage> {
                         String emoji;
                         switch (value) {
                           case InvestorProfile.turtle:
-                            label =
-                                "Tartaruga (Conservador)";
+                            label = "Tartaruga";
                             emoji = "🐢";
                             break;
                           case InvestorProfile.frog:
-                            label = "Sapo (Moderado)";
+                            label = "Sapo";
                             emoji = "🐸";
                             break;
                           case InvestorProfile.alligator:
-                            label = "Jacaré (Agressivo)";
+                            label = "Jacaré";
                             emoji = "🐊";
                             break;
                         }
@@ -231,14 +270,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              "Ajuste seus limites manualmente se desejar.",
-              style: TextStyle(
-                color: AppColors.textGrey,
-                fontSize: 12,
-              ),
-            ),
 
             const SizedBox(height: 24),
             _buildSlider(
@@ -262,6 +293,25 @@ class _SettingsPageState extends State<SettingsPage> {
               child: ElevatedButton(
                 onPressed: _saveSettings,
                 child: const Text("SALVAR ALTERAÇÕES"),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // --- BOTÃO DE RESET (ZONA DE PERIGO) ---
+            Center(
+              child: TextButton.icon(
+                onPressed: _confirmReset,
+                icon: const Icon(
+                  Icons.delete_forever,
+                  color: AppColors.errorRed,
+                ),
+                label: const Text(
+                  "Resert da Conta?",
+                  style: TextStyle(
+                    color: AppColors.errorRed,
+                  ),
+                ),
               ),
             ),
           ],
@@ -310,7 +360,7 @@ class _SettingsPageState extends State<SettingsPage> {
               activeTrackColor: color,
               inactiveTrackColor: AppColors.deepBlack,
               thumbColor: color,
-              overlayColor: color.withOpacity(0.2),
+              overlayColor: color.withValues(alpha: 0.2),
             ),
             child: Slider(
               value: value,

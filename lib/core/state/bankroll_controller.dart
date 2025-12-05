@@ -9,11 +9,13 @@ class XPResult {
   final bool gainedXP;
   final bool leveledUp;
   final int xpAmount;
+  final String message;
 
   XPResult({
     this.gainedXP = false,
     this.leveledUp = false,
     this.xpAmount = 0,
+    this.message = "",
   });
 }
 
@@ -37,30 +39,24 @@ class BankrollController extends ChangeNotifier {
 
   void _loadData() {
     if (!Hive.isBoxOpen('settings') ||
-        !Hive.isBoxOpen('bets')) {
+        !Hive.isBoxOpen('bets'))
       return;
-    }
-
     if (_settingsBox.containsKey('user_profile')) {
       _userProfile =
           _settingsBox.get('user_profile') as UserProfile?;
     }
-
     if (_settingsBox.containsKey('balance')) {
       _currentBalance = _settingsBox.get('balance');
     } else if (_userProfile != null) {
       _currentBalance = _userProfile!.initialBankroll;
     }
-
     _bets = _betsBox.values.toList();
-    // Ordena da mais nova para a mais antiga (Lista da UI)
     _bets.sort((a, b) => b.date.compareTo(a.date));
     notifyListeners();
   }
 
   void setUserProfile(UserProfile user) {
     _userProfile = user;
-    // Se a banca for 0 (primeira vez), inicializa
     if (_currentBalance == 0) {
       _currentBalance = user.initialBankroll;
       _settingsBox.put('balance', _currentBalance);
@@ -69,24 +65,23 @@ class BankrollController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- CRUD (Criação, Edição, Exclusão) ---
+  // --- MÉTODOS DE AÇÃO ---
 
   XPResult addBet(Bet bet) {
     _bets.insert(0, bet);
     _currentBalance -= bet.stake;
-
     _betsBox.put(bet.id, bet);
     _settingsBox.put('balance', _currentBalance);
 
-    XPResult result = XPResult();
-
-    // LÓGICA DE GAMIFICAÇÃO
+    XPResult result = XPResult(
+      message: "Perfil não configurado.",
+    );
     if (_userProfile != null) {
       result = _checkAndAwardXP(bet);
     }
 
     notifyListeners();
-    return result; // Retorna para a UI saber o que mostrar
+    return result;
   }
 
   XPResult _checkAndAwardXP(Bet bet) {
@@ -95,16 +90,40 @@ class BankrollController extends ChangeNotifier {
       _currentBalance + bet.stake,
     );
     final bool isStakeCorrect =
-        bet.stake <= (suggested + 1.0);
+        bet.stake <=
+        (suggested + 1.0); // Tolerância R$ 1.00
 
-    // 2. Regra do Limite
-    final bool isRespectingLimits =
-        !isStopLossHit && !isStopWinHit;
-
-    if (isStakeCorrect && isRespectingLimits) {
-      return _grantXP(10); // Ganha 10 XP
+    if (!isStakeCorrect) {
+      return XPResult(
+        message:
+            "Sem XP: Stake de R\$${bet.stake} é alta para seu perfil (Sugerido: R\$${suggested.toStringAsFixed(2)})",
+      );
     }
-    return XPResult(); // Nada aconteceu
+
+    // 2. Regra do Limite (Threshold) - COM VALORES REAIS NA MENSAGEM
+    // Recalcula aqui para ter certeza
+    final profitToday = profitTodayRaw;
+    final sWin = stopWinValue;
+    final sLoss = stopLossValue;
+
+    if (profitToday <= -sLoss) {
+      // Stop Loss Batido
+      return XPResult(
+        message:
+            "Sem XP: Stop Loss atingido (-R\$${profitToday.abs().toStringAsFixed(2)} / -R\$${sLoss.toStringAsFixed(2)})",
+      );
+    }
+
+    // ATENÇÃO: Se o lucro hoje já for maior que a meta, não dá XP
+    if (profitToday >= sWin) {
+      return XPResult(
+        message:
+            "Sem XP: Meta do dia já batida (+R\$${profitToday.toStringAsFixed(2)}). Descanse!",
+      );
+    }
+
+    // Se passou por tudo, ganha XP!
+    return _grantXP(10);
   }
 
   XPResult _grantXP(double amount) {
@@ -115,7 +134,6 @@ class BankrollController extends ChangeNotifier {
     double xpNeeded = _userProfile!.xpToNextLevel;
     bool leveledUp = false;
 
-    // Level Up! 🆙
     if (newXP >= xpNeeded) {
       newXP -= xpNeeded;
       newLevel++;
@@ -133,28 +151,21 @@ class BankrollController extends ChangeNotifier {
       gainedXP: true,
       leveledUp: leveledUp,
       xpAmount: amount.toInt(),
+      message: "Disciplina Férrea! +${amount.toInt()} XP",
     );
   }
 
+  // --- CRUD BASE (IGUAL ANTES) ---
   void resolveBet(Bet bet, BetResult newResult) {
-    // 1. Reverte o impacto financeiro atual (Neutraliza)
     _currentBalance -= bet.netImpact;
-
-    // 2. Calcula o novo impacto
     double newImpact = 0;
-    if (newResult == BetResult.win) {
+    if (newResult == BetResult.win)
       newImpact = (bet.stake * bet.odd) - bet.stake;
-    } else if (newResult == BetResult.loss) {
+    else if (newResult == BetResult.loss)
       newImpact = -bet.stake;
-    } else if (newResult == BetResult.pending) {
+    else if (newResult == BetResult.pending)
       newImpact = -bet.stake;
-    }
-    // Void = 0
-
-    // 3. Aplica
     _currentBalance += newImpact;
-
-    // 4. Atualiza o objeto
     final updatedBet = Bet(
       id: bet.id,
       matchTitle: bet.matchTitle,
@@ -164,23 +175,17 @@ class BankrollController extends ChangeNotifier {
       notes: bet.notes,
       result: newResult,
     );
-
     final index = _bets.indexWhere((b) => b.id == bet.id);
     if (index != -1) _bets[index] = updatedBet;
-
     _betsBox.put(updatedBet.id, updatedBet);
     _settingsBox.put('balance', _currentBalance);
-
     notifyListeners();
   }
 
   void deleteBet(Bet bet) {
-    // Devolve o dinheiro para a banca (desfaz a aposta)
     _currentBalance -= bet.netImpact;
-
     _bets.removeWhere((b) => b.id == bet.id);
     _betsBox.delete(bet.id);
-
     _settingsBox.put('balance', _currentBalance);
     notifyListeners();
   }
@@ -188,41 +193,32 @@ class BankrollController extends ChangeNotifier {
   void updateBet(Bet oldBet, Bet newBet) {
     _currentBalance -= oldBet.netImpact;
     _currentBalance += newBet.netImpact;
-
     final index = _bets.indexWhere(
       (b) => b.id == oldBet.id,
     );
     if (index != -1) _bets[index] = newBet;
-
     _betsBox.put(newBet.id, newBet);
     _settingsBox.put('balance', _currentBalance);
-
     notifyListeners();
   }
 
-  // --- SISTEMA THRESHOLD (METAS DO DIA) --- 🛡️
-
-  // 1. Quanto lucrei hoje?
+  // --- GETTERS E HELPERS ---
   double get profitTodayRaw {
     final now = DateTime.now();
-    // Filtra apostas com a mesma data de hoje
-    final todayBets = _bets.where((b) {
-      return b.date.year == now.year &&
+    final todayBets = _bets.where(
+      (b) =>
+          b.date.year == now.year &&
           b.date.month == now.month &&
-          b.date.day == now.day;
-    });
-
+          b.date.day == now.day,
+    );
     double total = 0;
     for (var bet in todayBets) {
-      // Só conta lucro de apostas FECHADAS (não pendentes)
-      if (bet.result != BetResult.pending) {
+      if (bet.result != BetResult.pending)
         total += bet.profit;
-      }
     }
     return total;
   }
 
-  // 2. Qual é o valor monetário da meta? (Baseado na % do perfil)
   double get stopWinValue =>
       _currentBalance *
       (_userProfile?.stopWinPercentage ?? 0.05);
@@ -230,7 +226,6 @@ class BankrollController extends ChangeNotifier {
       _currentBalance *
       (_userProfile?.stopLossPercentage ?? 0.03);
 
-  // 3. Progresso (0.0 a 1.0) para as Barras de Vida
   double get stopWinProgress {
     if (profitTodayRaw <= 0) return 0.0;
     return (profitTodayRaw / stopWinValue).clamp(0.0, 1.0);
@@ -238,31 +233,21 @@ class BankrollController extends ChangeNotifier {
 
   double get stopLossProgress {
     if (profitTodayRaw >= 0) return 0.0;
-    // Usa .abs() porque prejuízo é negativo
     return (profitTodayRaw.abs() / stopLossValue).clamp(
       0.0,
       1.0,
     );
   }
 
-  // 4. Status Binário (Bateu ou não?)
   bool get isStopLossHit =>
       profitTodayRaw <= -stopLossValue;
   bool get isStopWinHit => profitTodayRaw >= stopWinValue;
 
-  // --- DADOS PARA O GRÁFICO ---
   List<FlSpot> get chartData {
     if (_userProfile == null) return [];
-
-    // Começa com a banca inicial
     double runningBalance = _userProfile!.initialBankroll;
-
-    // Ponto 0
     final List<FlSpot> spots = [FlSpot(0, runningBalance)];
-
-    // Precisamos da ordem cronológica (Antigo -> Novo) para o gráfico desenhar certo
     final chronologicalBets = _bets.reversed.toList();
-
     for (int i = 0; i < chronologicalBets.length; i++) {
       final bet = chronologicalBets[i];
       runningBalance += bet.netImpact;
@@ -271,7 +256,6 @@ class BankrollController extends ChangeNotifier {
     return spots;
   }
 
-  // Getters visuais
   String get winRate {
     final finishedBets = _bets
         .where(
@@ -290,13 +274,25 @@ class BankrollController extends ChangeNotifier {
 
   double get todayProfit => profitTodayRaw;
 
-  void resetBankroll() {
-    _currentBalance = 100.00;
+  // MÉTODO NOVO: RESET TOTAL (O Botão de Pânico)
+  void fullReset() {
     _bets.clear();
-    _betsBox.clear();
-    _settingsBox.delete('user_profile');
-    _settingsBox.put('balance', 100.00);
-    _userProfile = null;
+    _betsBox.clear(); // Limpa as apostas
+
+    // Reseta o perfil para o básico, mantendo o nome se quiser, ou apaga tudo
+    // Vamos apagar tudo para começar do zero mesmo
+    _currentBalance = 100.0;
+    _settingsBox.put('balance', 100.0);
+
+    if (_userProfile != null) {
+      final resetUser = _userProfile!.copyWith(
+        currentXP: 0.0,
+        currentLevel: 1,
+        initialBankroll: 100.0, // Volta para 100
+      );
+      setUserProfile(resetUser);
+    }
+
     notifyListeners();
   }
 
@@ -306,11 +302,8 @@ class BankrollController extends ChangeNotifier {
   ) {
     _userProfile = user;
     _currentBalance = newBalance;
-
-    // Salva no banco
     _settingsBox.put('user_profile', user);
     _settingsBox.put('balance', _currentBalance);
-
     notifyListeners();
   }
 }
