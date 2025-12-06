@@ -24,13 +24,16 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       stopLossPercentage: fields[4] as double?,
       currentLevel: fields[5] as int,
       currentXP: fields[6] as double,
+      ghostMode: fields[7] as bool,
+      ghostTriggerPercentage: fields[8] as double,
+      achivements: (fields[9] as List).cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, UserProfile obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -44,7 +47,13 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       ..writeByte(5)
       ..write(obj.currentLevel)
       ..writeByte(6)
-      ..write(obj.currentXP);
+      ..write(obj.currentXP)
+      ..writeByte(7)
+      ..write(obj.ghostMode)
+      ..writeByte(8)
+      ..write(obj.ghostTriggerPercentage)
+      ..writeByte(9)
+      ..write(obj.achivements);
   }
 
   @override

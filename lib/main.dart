@@ -20,7 +20,6 @@ void main() async {
   // Abrir caixas
   await Hive.openBox('settings');
   await Hive.openBox<Bet>('bets');
-
   runApp(const ThressFrogApp());
 }
 

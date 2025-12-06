@@ -18,6 +18,7 @@ class _SettingsPageState extends State<SettingsPage> {
   double _stopWin = 0.05;
   double _stopLoss = 0.03;
   InvestorProfile _profile = InvestorProfile.frog;
+  bool _ghostMode = false;
 
   @override
   void initState() {
@@ -31,6 +32,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _stopWin = user.stopWinPercentage;
       _stopLoss = user.stopLossPercentage;
       _profile = user.profile;
+      _ghostMode = user.ghostMode;
     }
     _bankrollController.text = currentBalance
         .toStringAsFixed(2);
@@ -53,6 +55,8 @@ class _SettingsPageState extends State<SettingsPage> {
       stopLossPercentage: _stopLoss,
       currentLevel: currentProfile?.currentLevel ?? 1,
       currentXP: currentProfile?.currentXP ?? 0.0,
+      ghostMode: _ghostMode,
+      ghostTriggerPercentage: 0.50,
     );
 
     BankrollController.instance.updateUserProfileAndBalance(
@@ -259,6 +263,79 @@ class _SettingsPageState extends State<SettingsPage> {
                       })
                       .toList(),
                 ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: _ghostMode
+                      ? AppColors.neonGreen.withValues(
+                          alpha: 0.5,
+                        )
+                      : Colors.white10,
+                ),
+                color: AppColors.surfaceDark,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: SwitchListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                activeThumbColor: AppColors.neonGreen,
+                inactiveThumbColor: Colors.grey,
+                inactiveTrackColor: AppColors.deepBlack,
+                title: Row(
+                  children: [
+                    const Text(
+                      "Ghost Froq",
+                      style: TextStyle(
+                        color: AppColors.textWhite,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "👻",
+                      style: TextStyle(
+                        fontSize: 20,
+                        shadows: _ghostMode
+                            ? [
+                                const BoxShadow(
+                                  color:
+                                      AppColors.neonGreen,
+                                  blurRadius: 8,
+                                ),
+                              ]
+                            : [],
+                      ),
+                    ),
+                  ],
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 6.0),
+                  child: Text(
+                    _ghostMode
+                        ? "Ativo: Se atingir 50% da meta, o Stop Loss sobre para 0 x 0"
+                        : "Inativo: Stop Loss fixo no valor definido abaixo",
+                    style: TextStyle(
+                      color: _ghostMode
+                          ? Colors.white70
+                          : Colors.white38,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _ghostMode = value;
+                  });
+                },
+                value: _ghostMode,
               ),
             ),
 

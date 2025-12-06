@@ -193,7 +193,9 @@ class _CreateBetPageState extends State<CreateBetPage> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.neonGreen.withOpacity(0.1),
+                color: AppColors.neonGreen.withValues(
+                  alpha: .1,
+                ),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

@@ -31,6 +31,15 @@ class UserProfile {
   @HiveField(6)
   final double currentXP;
 
+  @HiveField(7)
+  final bool ghostMode;
+
+  @HiveField(8)
+  final double ghostTriggerPercentage;
+
+  @HiveField(9)
+  final List<String> achivements;
+
   UserProfile({
     required this.name,
     required this.initialBankroll,
@@ -39,6 +48,9 @@ class UserProfile {
     double? stopLossPercentage,
     this.currentLevel = 1,
     this.currentXP = 0.0,
+    this.ghostMode = false,
+    this.ghostTriggerPercentage = 0.50,
+    this.achivements = const [],
   }) : // Usamos os métodos estáticos públicos agora
        stopWinPercentage =
            stopWinPercentage ?? defaultWin(profile),
@@ -87,6 +99,9 @@ class UserProfile {
     double? stopLossPercentage,
     int? currentLevel,
     double? currentXP,
+    bool? ghostMode,
+    double? ghostTriggerPercentage,
+    List<String>? achivements,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -99,6 +114,11 @@ class UserProfile {
           stopLossPercentage ?? this.stopLossPercentage,
       currentLevel: currentLevel ?? this.currentLevel,
       currentXP: currentXP ?? this.currentXP,
+      ghostMode: ghostMode ?? this.ghostMode,
+      ghostTriggerPercentage:
+          ghostTriggerPercentage ??
+          this.ghostTriggerPercentage,
+      achivements: achivements ?? this.achivements,
     );
   }
 }

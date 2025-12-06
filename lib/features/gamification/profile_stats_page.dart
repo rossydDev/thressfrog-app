@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
+import 'widgets/home_stop_loss_card.dart'; // Certifique-se que o caminho está certo
 
 class ProfileStatsPage extends StatelessWidget {
   const ProfileStatsPage({super.key});
@@ -20,12 +21,19 @@ class ProfileStatsPage extends StatelessWidget {
 
           if (user == null) return const SizedBox();
 
+          // CÁLCULOS PARA O STOP WIN (Que estava faltando)
+          final profit = controller.profitTodayRaw;
+          final stopWin = controller.stopWinValue;
+          final stopWinProgress = (profit > 0)
+              ? (profit / stopWin).clamp(0.0, 1.0)
+              : 0.0;
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. CABEÇALHO DO PERFIL
+                // 1. CABEÇALHO (MANTIDO)
                 Center(
                   child: Column(
                     children: [
@@ -42,7 +50,7 @@ class ProfileStatsPage extends StatelessWidget {
                           boxShadow: [
                             BoxShadow(
                               color: AppColors.neonGreen
-                                  .withOpacity(0.2),
+                                  .withValues(alpha: .2),
                               blurRadius: 20,
                             ),
                           ],
@@ -78,7 +86,7 @@ class ProfileStatsPage extends StatelessWidget {
 
                 const SizedBox(height: 40),
 
-                // 2. PAINEL DE THRESHOLDS (METAS DO DIA)
+                // 2. PAINEL DE THRESHOLDS
                 const Text(
                   "Metas do Dia",
                   style: TextStyle(
@@ -89,34 +97,28 @@ class ProfileStatsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
+                // CARD STOP WIN (Recuperado)
                 _buildThresholdCard(
                   title: "Meta de Lucro (Stop Win)",
-                  current: controller.profitTodayRaw > 0
-                      ? controller.profitTodayRaw
-                      : 0,
-                  target: controller.stopWinValue,
-                  progress: controller.stopWinProgress,
+                  current: profit > 0
+                      ? profit
+                      : 0, // Só mostra valor se for positivo
+                  target: stopWin,
+                  progress:
+                      stopWinProgress, // Variável calculada no início do build
                   color: AppColors.neonGreen,
                   icon: Icons.rocket_launch,
                 ),
 
-                const SizedBox(height: 12),
-
-                _buildThresholdCard(
-                  title: "Limite de Perda (Stop Loss)",
-                  current: controller.profitTodayRaw < 0
-                      ? controller.profitTodayRaw.abs()
-                      : 0, // Mostra positivo para a barra
-                  target: controller.stopLossValue,
-                  progress: controller.stopLossProgress,
-                  color: AppColors.errorRed,
-                  icon: Icons.shield,
-                  isLoss: true,
-                ),
+                const SizedBox(
+                  height: 16,
+                ), // Espaço entre os cards
+                // CARD STOP LOSS (O Novo Widget)
+                const HomeStopLossCard(),
 
                 const SizedBox(height: 40),
 
-                // 3. BADGES (CONQUISTAS)
+                // 3. BADGES (MANTIDO)
                 const Text(
                   "Sala de Troféus",
                   style: TextStyle(
@@ -138,39 +140,44 @@ class ProfileStatsPage extends StatelessWidget {
                     _buildBadge(
                       icon: Icons.flag,
                       name: "Primeiro Pulo",
-                      unlocked: controller.bets.isNotEmpty,
+                      unlocked: user.achivements.contains(
+                        'first_bet',
+                      ),
                     ),
                     _buildBadge(
                       icon: Icons.emoji_events,
                       name: "Vencedor",
-                      unlocked: controller.bets.any(
-                        (b) => b.isGreen,
+                      unlocked: user.achivements.contains(
+                        'winner',
                       ),
                     ),
                     _buildBadge(
                       icon: Icons.local_fire_department,
                       name: "Sniper",
-                      unlocked:
-                          _calculateWinRate(controller) >=
-                          60.0, // Ex: WR > 60%
+                      unlocked: user.achivements.contains(
+                        'sniper',
+                      ),
                     ),
                     _buildBadge(
                       icon: Icons.diamond,
                       name: "Sapo Rico",
-                      unlocked:
-                          controller.currentBalance >=
-                          1000.0,
+                      unlocked: user.achivements.contains(
+                        'rich_frog',
+                      ),
                     ),
                     _buildBadge(
                       icon: Icons.school,
                       name: "Estudioso",
-                      unlocked:
-                          controller.bets.length >= 10,
+                      unlocked: user.achivements.contains(
+                        'scholar',
+                      ),
                     ),
                     _buildBadge(
                       icon: Icons.balance,
                       name: "Disciplina",
-                      unlocked: user.currentLevel >= 5,
+                      unlocked: user.achivements.contains(
+                        'discipline',
+                      ),
                     ),
                   ],
                 ),
@@ -180,24 +187,6 @@ class ProfileStatsPage extends StatelessWidget {
         },
       ),
     );
-  }
-
-  // Lógica simples para calcular WinRate numérico
-  double _calculateWinRate(BankrollController controller) {
-    if (controller.bets.isEmpty) return 0.0;
-    final finished = controller.bets
-        .where(
-          (b) => ![
-            'pending',
-            'voided',
-          ].contains(b.result.name),
-        )
-        .length;
-    if (finished == 0) return 0.0;
-    final wins = controller.bets
-        .where((b) => b.isGreen)
-        .length;
-    return (wins / finished) * 100;
   }
 
   Widget _buildThresholdCard({
@@ -214,7 +203,9 @@ class ProfileStatsPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceDark,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(
+          color: color.withValues(alpha: .3),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,7 +238,7 @@ class ProfileStatsPage extends StatelessWidget {
             children: [
               Text(
                 "${isLoss ? '-' : '+'}R\$ ${current.toStringAsFixed(2)}",
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.textGrey,
                   fontSize: 12,
                 ),
@@ -279,13 +270,15 @@ class ProfileStatsPage extends StatelessWidget {
           width: 60,
           decoration: BoxDecoration(
             color: unlocked
-                ? AppColors.neonGreen.withOpacity(0.1)
+                ? AppColors.neonGreen.withValues(alpha: .1)
                 : AppColors.surfaceDark,
             shape: BoxShape.circle,
             border: Border.all(
               color: unlocked
                   ? AppColors.neonGreen
-                  : AppColors.textGrey.withOpacity(0.3),
+                  : AppColors.textGrey.withValues(
+                      alpha: .3,
+                    ),
               width: 2,
             ),
           ),
@@ -293,7 +286,7 @@ class ProfileStatsPage extends StatelessWidget {
             icon,
             color: unlocked
                 ? AppColors.neonGreen
-                : AppColors.textGrey.withOpacity(0.3),
+                : AppColors.textGrey.withValues(alpha: .3),
             size: 30,
           ),
         ),
@@ -304,7 +297,7 @@ class ProfileStatsPage extends StatelessWidget {
           style: TextStyle(
             color: unlocked
                 ? AppColors.textWhite
-                : AppColors.textGrey.withOpacity(0.5),
+                : AppColors.textGrey.withValues(alpha: .5),
             fontSize: 12,
             fontWeight: unlocked
                 ? FontWeight.bold

@@ -39,8 +39,9 @@ class BankrollController extends ChangeNotifier {
 
   void _loadData() {
     if (!Hive.isBoxOpen('settings') ||
-        !Hive.isBoxOpen('bets'))
+        !Hive.isBoxOpen('bets')) {
       return;
+    }
     if (_settingsBox.containsKey('user_profile')) {
       _userProfile =
           _settingsBox.get('user_profile') as UserProfile?;
@@ -62,6 +63,8 @@ class BankrollController extends ChangeNotifier {
       _settingsBox.put('balance', _currentBalance);
     }
     _settingsBox.put('user_profile', user);
+
+    _checkAchievements();
     notifyListeners();
   }
 
@@ -80,41 +83,43 @@ class BankrollController extends ChangeNotifier {
       result = _checkAndAwardXP(bet);
     }
 
+    _checkAchievements();
     notifyListeners();
     return result;
   }
 
   XPResult _checkAndAwardXP(Bet bet) {
-    // 1. Regra da Stake
     final suggested = _userProfile!.suggestedStake(
       _currentBalance + bet.stake,
     );
     final bool isStakeCorrect =
-        bet.stake <=
-        (suggested + 1.0); // Tolerância R$ 1.00
+        bet.stake <= (suggested + 1.0);
 
     if (!isStakeCorrect) {
       return XPResult(
         message:
-            "Sem XP: Stake de R\$${bet.stake} é alta para seu perfil (Sugerido: R\$${suggested.toStringAsFixed(2)})",
+            "Sem XP: Stake de R\$${bet.stake} é alta para seu perfil...",
       );
     }
 
-    // 2. Regra do Limite (Threshold) - COM VALORES REAIS NA MENSAGEM
-    // Recalcula aqui para ter certeza
     final profitToday = profitTodayRaw;
-    final sWin = stopWinValue;
-    final sLoss = stopLossValue;
+    final limitFloor = currentStopLossLimit;
 
-    if (profitToday <= -sLoss) {
-      // Stop Loss Batido
-      return XPResult(
-        message:
-            "Sem XP: Stop Loss atingido (-R\$${profitToday.abs().toStringAsFixed(2)} / -R\$${sLoss.toStringAsFixed(2)})",
-      );
+    if (profitToday < limitFloor) {
+      if (isGhostModeTriggered) {
+        return XPResult(
+          message:
+              "Sem XP: GHOST ATIVADO! Você devolveu todo o lucro do dia. Pare no 0x0.",
+        );
+      } else {
+        return XPResult(
+          message:
+              "Sem XP: Stop Loss atingido (-R\$${profitToday.abs().toStringAsFixed(2)}).",
+        );
+      }
     }
 
-    // ATENÇÃO: Se o lucro hoje já for maior que a meta, não dá XP
+    final sWin = stopWinValue;
     if (profitToday >= sWin) {
       return XPResult(
         message:
@@ -122,7 +127,6 @@ class BankrollController extends ChangeNotifier {
       );
     }
 
-    // Se passou por tudo, ganha XP!
     return _grantXP(10);
   }
 
@@ -155,16 +159,17 @@ class BankrollController extends ChangeNotifier {
     );
   }
 
-  // --- CRUD BASE (IGUAL ANTES) ---
   void resolveBet(Bet bet, BetResult newResult) {
     _currentBalance -= bet.netImpact;
     double newImpact = 0;
-    if (newResult == BetResult.win)
+    if (newResult == BetResult.win) {
       newImpact = (bet.stake * bet.odd) - bet.stake;
-    else if (newResult == BetResult.loss)
+    } else if (newResult == BetResult.loss) {
       newImpact = -bet.stake;
-    else if (newResult == BetResult.pending)
+    } else if (newResult == BetResult.pending) {
       newImpact = -bet.stake;
+    }
+
     _currentBalance += newImpact;
     final updatedBet = Bet(
       id: bet.id,
@@ -179,6 +184,8 @@ class BankrollController extends ChangeNotifier {
     if (index != -1) _bets[index] = updatedBet;
     _betsBox.put(updatedBet.id, updatedBet);
     _settingsBox.put('balance', _currentBalance);
+
+    _checkAchievements();
     notifyListeners();
   }
 
@@ -202,7 +209,6 @@ class BankrollController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- GETTERS E HELPERS ---
   double get profitTodayRaw {
     final now = DateTime.now();
     final todayBets = _bets.where(
@@ -213,8 +219,9 @@ class BankrollController extends ChangeNotifier {
     );
     double total = 0;
     for (var bet in todayBets) {
-      if (bet.result != BetResult.pending)
+      if (bet.result != BetResult.pending) {
         total += bet.profit;
+      }
     }
     return total;
   }
@@ -232,11 +239,16 @@ class BankrollController extends ChangeNotifier {
   }
 
   double get stopLossProgress {
-    if (profitTodayRaw >= 0) return 0.0;
-    return (profitTodayRaw.abs() / stopLossValue).clamp(
-      0.0,
-      1.0,
-    );
+    final profit = profitTodayRaw;
+
+    if (isGhostModeTriggered) {
+      if (profit < 0) return 1.0;
+      return 0.0;
+    }
+
+    // Lógica antiga para comportamento padrão
+    if (profit >= 0) return 0.0;
+    return (profit.abs() / stopLossValue).clamp(0.0, 1.0);
   }
 
   bool get isStopLossHit =>
@@ -274,13 +286,9 @@ class BankrollController extends ChangeNotifier {
 
   double get todayProfit => profitTodayRaw;
 
-  // MÉTODO NOVO: RESET TOTAL (O Botão de Pânico)
   void fullReset() {
     _bets.clear();
-    _betsBox.clear(); // Limpa as apostas
-
-    // Reseta o perfil para o básico, mantendo o nome se quiser, ou apaga tudo
-    // Vamos apagar tudo para começar do zero mesmo
+    _betsBox.clear();
     _currentBalance = 100.0;
     _settingsBox.put('balance', 100.0);
 
@@ -288,7 +296,7 @@ class BankrollController extends ChangeNotifier {
       final resetUser = _userProfile!.copyWith(
         currentXP: 0.0,
         currentLevel: 1,
-        initialBankroll: 100.0, // Volta para 100
+        initialBankroll: 100.0,
       );
       setUserProfile(resetUser);
     }
@@ -305,5 +313,98 @@ class BankrollController extends ChangeNotifier {
     _settingsBox.put('user_profile', user);
     _settingsBox.put('balance', _currentBalance);
     notifyListeners();
+  }
+
+  bool get isGhostModeTriggered {
+    if (_userProfile == null || !_userProfile!.ghostMode) {
+      return false;
+    }
+
+    return profitTodayRaw >=
+        (stopWinValue *
+            _userProfile!.ghostTriggerPercentage);
+  }
+
+  double get currentStopLossLimit {
+    if (isGhostModeTriggered) {
+      return 0.0;
+    }
+
+    return -stopLossValue;
+  }
+
+  void _checkAchievements() {
+    if (_userProfile == null) return;
+
+    final List<String> currentBadges = List.from(
+      _userProfile!.achivements,
+    );
+    final List<String> newBadges = [];
+
+    // Helper para adicionar badge se ainda não tiver
+    void unlock(String id) {
+      if (!currentBadges.contains(id)) {
+        currentBadges.add(id);
+        newBadges.add(id);
+      }
+    }
+
+    // 1. PRIMEIRO PULO (Fazer a primeira aposta)
+    if (_bets.isNotEmpty) {
+      unlock('first_bet');
+    }
+
+    // 2. VENCEDOR (Ter pelo menos 1 Green)
+    // Assumindo que BetResult.win é o enum para Green
+    if (_bets.any((b) => b.result == BetResult.win)) {
+      unlock('winner');
+    }
+
+    // 3. ESTUDIOSO (Ter 10 ou mais apostas lançadas)
+    if (_bets.length >= 10) {
+      unlock('scholar');
+    }
+
+    // 4. SAPO RICO (Banca >= R$ 1.000,00)
+    if (_currentBalance >= 1000.0) {
+      unlock('rich_frog');
+    }
+
+    // 5. DISCIPLINA (Chegar ao Nível 5)
+    if (_userProfile!.currentLevel >= 5) {
+      unlock('discipline');
+    }
+
+    // 6. SNIPER (Win Rate >= 60% com minímo de 10 apostas finalizadas)
+    // Precisamos filtrar apenas as finalizadas para ser justo
+    final finishedBets = _bets
+        .where(
+          (b) =>
+              b.result == BetResult.win ||
+              b.result == BetResult.loss,
+        )
+        .toList();
+    if (finishedBets.length >= 10) {
+      final wins = finishedBets
+          .where((b) => b.result == BetResult.win)
+          .length;
+      final winRate = wins / finishedBets.length;
+      if (winRate >= 0.60) {
+        // 60%
+        unlock('sniper');
+      }
+    }
+
+    // SE HOUVE MUDANÇA, SALVA E NOTIFICA
+    if (newBadges.isNotEmpty) {
+      final updatedUser = _userProfile!.copyWith(
+        achivements: currentBadges,
+      );
+      // Salva direto sem notificar para não gerar loop infinito,
+      // ou usa setUserProfile se quiser atualizar a UI
+      _userProfile = updatedUser;
+      _settingsBox.put('user_profile', updatedUser);
+      notifyListeners();
+    }
   }
 }
