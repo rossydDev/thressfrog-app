@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/bet_model.dart';
+import '../create_bet/select_match_screen.dart';
 
 class CreateBetPage extends StatefulWidget {
   final Bet? betToEdit;
@@ -271,6 +272,73 @@ class _CreateBetPageState extends State<CreateBetPage> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              if (!isEditing) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      // 1. Navega para a tela de seleção e ESPERA o resultado
+                      final selectedMatchName =
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const SelectMatchScreen(),
+                            ),
+                          );
+
+                      // 2. Se voltou com um nome, preenche o campo
+                      if (selectedMatchName != null &&
+                          selectedMatchName is String) {
+                        setState(() {
+                          _matchController.text =
+                              selectedMatchName;
+                        });
+
+                        // Opcional: Feedback visual
+                        ScaffoldMessenger.of(
+                          // ignore: use_build_context_synchronously
+                          context,
+                        ).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Partida carregada com sucesso! 🎮",
+                            ),
+                            backgroundColor:
+                                AppColors.neonGreen,
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(
+                      Icons.search,
+                      color: AppColors.neonGreen,
+                    ),
+                    label: const Text(
+                      "Buscar Jogo Oficial (LoL)",
+                      style: TextStyle(
+                        color: AppColors.neonGreen,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(
+                        color: AppColors.neonGreen,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               _buildInput(
                 label: "Partida (Ex: T1 vs Gen.G)",
