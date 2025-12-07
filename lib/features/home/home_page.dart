@@ -92,10 +92,13 @@ class HomePage extends StatelessWidget {
                     ),
                     if (bets.isNotEmpty)
                       TextButton(
-                        onPressed: () {},
-                        child: const Text(
-                          "Ver tudo",
-                          style: TextStyle(
+                        onPressed: () {
+                          // Futuro: Navegar para histórico completo
+                        },
+                        child: Text(
+                          // [ATUALIZAÇÃO 1] Contador dinâmico
+                          "Ver tudo (${bets.length})",
+                          style: const TextStyle(
                             color: AppColors.neonGreen,
                           ),
                         ),
@@ -163,11 +166,13 @@ class HomePage extends StatelessWidget {
   }
 
   void _showResolveOptions(BuildContext context, Bet bet) {
+    // [ATUALIZAÇÃO 2] Verifica se é oficial
+    final isOfficial = bet.pandaMatchId != null;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surfaceDark,
-      isScrollControlled:
-          true, // Permite o menu crescer se precisar
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(24),
@@ -184,7 +189,7 @@ class HomePage extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Cabeçalho com o Título e Botão de Fechar discreto
+              // Cabeçalho
               Row(
                 mainAxisAlignment:
                     MainAxisAlignment.spaceBetween,
@@ -211,7 +216,7 @@ class HomePage extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // SEÇÃO 1: Definir Resultado (Só mostra se ainda estiver pendente)
+              // SEÇÃO 1: Definir Resultado
               if (bet.result == BetResult.pending) ...[
                 const Align(
                   alignment: Alignment.centerLeft,
@@ -225,44 +230,86 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildActionBtnCompact(
-                        label: "GREEN",
-                        color: AppColors.neonGreen,
-                        icon: Icons.trending_up,
-                        onTap: () {
-                          BankrollController.instance
-                              .resolveBet(
-                                bet,
-                                BetResult.win,
-                              );
-                          Navigator.pop(context);
-                        },
+
+                // [LÓGICA DE BLOQUEIO]
+                if (isOfficial) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.neonPurple
+                          .withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(
+                        12,
+                      ),
+                      border: Border.all(
+                        color: AppColors.neonPurple
+                            .withValues(alpha: 0.3),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildActionBtnCompact(
-                        label: "RED",
-                        color: AppColors.errorRed,
-                        icon: Icons.trending_down,
-                        onTap: () {
-                          BankrollController.instance
-                              .resolveBet(
-                                bet,
-                                BetResult.loss,
-                              );
-                          Navigator.pop(context);
-                        },
-                      ),
+                    child: Row(
+                      children: const [
+                        Icon(
+                          Icons.lock_clock,
+                          color: AppColors.neonPurple,
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "Aposta Oficial vinculada à API. Aguarde o fim da partida ou anule abaixo.",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ] else ...[
+                  // BOTÕES MANUAIS (Só aparecem se NÃO for oficial)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildActionBtnCompact(
+                          label: "GREEN",
+                          color: AppColors.neonGreen,
+                          icon: Icons.trending_up,
+                          onTap: () {
+                            BankrollController.instance
+                                .resolveBet(
+                                  bet,
+                                  BetResult.win,
+                                );
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildActionBtnCompact(
+                          label: "RED",
+                          color: AppColors.errorRed,
+                          icon: Icons.trending_down,
+                          onTap: () {
+                            BankrollController.instance
+                                .resolveBet(
+                                  bet,
+                                  BetResult.loss,
+                                );
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
                 const SizedBox(height: 12),
+
+                // Botão de Anular (Sempre disponível)
                 _buildActionBtnCompact(
-                  label: "ANULADA / REEMBOLSO",
+                  label: "ANULAR / REEMBOLSO",
                   color: AppColors.textGrey,
                   icon: Icons.refresh,
                   onTap: () {
@@ -276,7 +323,7 @@ class HomePage extends StatelessWidget {
                 const SizedBox(height: 24),
               ],
 
-              // SEÇÃO 2: Gerenciamento (Editar / Excluir)
+              // SEÇÃO 2: Gerenciamento
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -295,9 +342,7 @@ class HomePage extends StatelessWidget {
                 color: Colors.blueAccent,
                 icon: Icons.edit,
                 onTap: () {
-                  Navigator.pop(
-                    context,
-                  ); // Fecha o menu primeiro
+                  Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -313,7 +358,6 @@ class HomePage extends StatelessWidget {
                 color: Colors.red.shade900,
                 icon: Icons.delete_forever,
                 onTap: () {
-                  // Confirmação antes de excluir
                   showDialog(
                     context: context,
                     builder: (ctx) => AlertDialog(
@@ -346,12 +390,8 @@ class HomePage extends StatelessWidget {
                           onPressed: () {
                             BankrollController.instance
                                 .deleteBet(bet);
-                            Navigator.pop(
-                              ctx,
-                            ); // Fecha Dialog
-                            Navigator.pop(
-                              context,
-                            ); // Fecha BottomSheet
+                            Navigator.pop(ctx);
+                            Navigator.pop(context);
                           },
                           child: const Text(
                             "EXCLUIR",
@@ -472,6 +512,9 @@ class HomePage extends StatelessWidget {
         statusText = "Anulada";
     }
 
+    // Marca visualmente se é uma aposta oficial (API)
+    final isOfficial = bet.pandaMatchId != null;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -480,9 +523,14 @@ class HomePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: bet.result == BetResult.pending
             ? Border.all(
-                color: AppColors.neonGreen.withValues(
-                  alpha: 0.3,
-                ),
+                // Borda roxa se oficial, verde se manual
+                color: isOfficial
+                    ? AppColors.neonPurple.withValues(
+                        alpha: 0.5,
+                      )
+                    : AppColors.neonGreen.withValues(
+                        alpha: 0.3,
+                      ),
                 width: 1,
               )
             : null,
@@ -506,13 +554,29 @@ class HomePage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  bet.matchTitle,
-                  style: const TextStyle(
-                    color: AppColors.textWhite,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        bet.matchTitle,
+                        style: const TextStyle(
+                          color: AppColors.textWhite,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    // Ícone discreto para indicar que é oficial
+                    if (isOfficial) ...[
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.verified,
+                        color: AppColors.neonPurple,
+                        size: 14,
+                      ),
+                    ],
+                  ],
                 ),
                 Text(
                   "Odd: ${bet.odd}",
