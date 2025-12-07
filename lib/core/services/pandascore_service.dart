@@ -7,8 +7,7 @@ class PandaScoreService {
   final Dio _dio = Dio();
 
   // 🔑 Lembre de colocar sua chave aqui ou usar .env
-  static const String _token =
-      'TFGMNjBRDKJbMvwRDslF706PpW3hD2nMdUToGv-DaOjZUWbqp3o';
+  static const String _token = 'PANDASCORETOKE_AQUI';
 
   // Ligas Padrão (Big 5 + KeSPA para testes agora)
   static const List<String> defaultLeagues = [
