@@ -8,6 +8,7 @@ class AppColors {
   static const Color textWhite = Color(0xFFFFFFFF);
   static const Color textGrey = Color(0xFF8E8E93);
   static const Color errorRed = Color(0xFFFF453A);
+  static const Color neonPurple = Color(0xFFD946EF);
 }
 
 class AppTheme {

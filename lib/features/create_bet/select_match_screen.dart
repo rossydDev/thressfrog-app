@@ -114,7 +114,7 @@ class _SelectMatchScreenState
     return InkWell(
       onTap: () {
         // Retorna o nome do jogo para a tela anterior
-        Navigator.pop(context, match.name);
+        Navigator.pop(context, match);
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/bet_model.dart';
+import '../../models/lol_match_model.dart'; // [NOVO] Import do modelo da API
 import '../create_bet/select_match_screen.dart';
 
 class CreateBetPage extends StatefulWidget {
@@ -23,6 +24,10 @@ class _CreateBetPageState extends State<CreateBetPage> {
   late TextEditingController _stakeController;
   late TextEditingController _notesController;
 
+  // [NOVO] Variáveis para controlar a escolha via API
+  LoLMatch? _selectedApiMatch;
+  int? _selectedTeamId;
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +44,8 @@ class _CreateBetPageState extends State<CreateBetPage> {
       text: widget.betToEdit?.notes ?? '',
     );
 
+    // Se estiver editando, poderíamos carregar os IDs salvos aqui,
+    // mas por enquanto vamos manter simples para criação.
     if (widget.betToEdit == null) {
       _prefillStake();
     }
@@ -111,6 +118,10 @@ class _CreateBetPageState extends State<CreateBetPage> {
             ? widget.betToEdit!.result
             : BetResult.pending,
         notes: _notesController.text,
+
+        // [NOVO] Salvando os dados de inteligência
+        pandaMatchId: _selectedApiMatch?.id,
+        pickedTeamId: _selectedTeamId,
       );
 
       if (isEditing) {
@@ -126,17 +137,13 @@ class _CreateBetPageState extends State<CreateBetPage> {
           ),
         );
       } else {
-        // AQUI É A NOVIDADE: Capturamos o XPResult
         final xpResult = BankrollController.instance.addBet(
           newBet,
         );
         Navigator.pop(context);
 
-        // Mostramos Feedback Customizado
         if (xpResult.leveledUp) {
-          _showLevelUpDialog(
-            context,
-          ); // Vamos criar esse dialog jájá
+          _showLevelUpDialog(context);
         } else if (xpResult.gainedXP) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -172,11 +179,10 @@ class _CreateBetPageState extends State<CreateBetPage> {
     }
   }
 
-  // Novo método para mostrar o Dialog de Level Up
   void _showLevelUpDialog(BuildContext context) {
     showDialog(
       context: context,
-      barrierDismissible: false, // Obriga a clicar no botão
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceDark,
         shape: RoundedRectangleBorder(
@@ -184,13 +190,12 @@ class _CreateBetPageState extends State<CreateBetPage> {
           side: const BorderSide(
             color: AppColors.neonGreen,
             width: 2,
-          ), // Borda Neon
+          ),
         ),
         contentPadding: const EdgeInsets.all(32),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Ícone animado (ou estático por enquanto)
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -206,7 +211,6 @@ class _CreateBetPageState extends State<CreateBetPage> {
               ),
             ),
             const SizedBox(height: 24),
-
             const Text(
               "LEVEL UP!",
               style: TextStyle(
@@ -217,7 +221,6 @@ class _CreateBetPageState extends State<CreateBetPage> {
               ),
             ),
             const SizedBox(height: 16),
-
             const Text(
               "Sua disciplina compensou. Você evoluiu e está mais perto de se tornar um Sapo Rei.",
               textAlign: TextAlign.center,
@@ -227,9 +230,7 @@ class _CreateBetPageState extends State<CreateBetPage> {
                 height: 1.5,
               ),
             ),
-
             const SizedBox(height: 32),
-
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -278,9 +279,9 @@ class _CreateBetPageState extends State<CreateBetPage> {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                      // 1. Navega para a tela de seleção e ESPERA o resultado
-                      final selectedMatchName =
-                          await Navigator.push(
+                      // [NOVO] Espera um OBJETO LoLMatch, não string
+                      final match =
+                          await Navigator.push<LoLMatch>(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
@@ -288,28 +289,14 @@ class _CreateBetPageState extends State<CreateBetPage> {
                             ),
                           );
 
-                      // 2. Se voltou com um nome, preenche o campo
-                      if (selectedMatchName != null &&
-                          selectedMatchName is String) {
+                      if (match != null) {
                         setState(() {
+                          _selectedApiMatch = match;
                           _matchController.text =
-                              selectedMatchName;
+                              match.name;
+                          _selectedTeamId =
+                              null; // Reseta seleção anterior
                         });
-
-                        // Opcional: Feedback visual
-                        ScaffoldMessenger.of(
-                          // ignore: use_build_context_synchronously
-                          context,
-                        ).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              "Partida carregada com sucesso! 🎮",
-                            ),
-                            backgroundColor:
-                                AppColors.neonGreen,
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
                       }
                     },
                     icon: const Icon(
@@ -346,6 +333,47 @@ class _CreateBetPageState extends State<CreateBetPage> {
                 icon: Icons.gamepad_outlined,
               ),
 
+              // --- [NOVO] SELETOR DE TIMES ---
+              if (_selectedApiMatch != null &&
+                  _selectedApiMatch!.teamA != null &&
+                  _selectedApiMatch!.teamB != null) ...[
+                const SizedBox(height: 24),
+                const Center(
+                  child: Text(
+                    "Em quem você vai apostar?",
+                    style: TextStyle(
+                      color: AppColors.neonGreen,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _buildTeamSelector(
+                      _selectedApiMatch!.teamA!,
+                      _selectedTeamId ==
+                          _selectedApiMatch!.teamA!.id,
+                    ),
+                    const SizedBox(width: 16),
+                    const Text(
+                      "VS",
+                      style: TextStyle(
+                        color: Colors.white24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    _buildTeamSelector(
+                      _selectedApiMatch!.teamB!,
+                      _selectedTeamId ==
+                          _selectedApiMatch!.teamB!.id,
+                    ),
+                  ],
+                ),
+              ],
+
+              // ----------------------------------------
               const SizedBox(height: 24),
 
               Row(
@@ -391,6 +419,79 @@ class _CreateBetPageState extends State<CreateBetPage> {
                         ? "SALVAR ALTERAÇÕES"
                         : "REGISTRAR PULO",
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // [NOVO] Widget para desenhar o cartão do time
+  Widget _buildTeamSelector(Team team, bool isSelected) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedTeamId = team.id;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(
+            vertical: 16,
+            horizontal: 8,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.neonGreen.withValues(alpha: 0.1)
+                : AppColors.surfaceDark,
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.neonGreen
+                  : Colors.white10,
+              width: isSelected ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: AppColors.neonGreen.withValues(
+                        alpha: 0.2,
+                      ),
+                      blurRadius: 12,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : [],
+          ),
+          child: Column(
+            children: [
+              if (team.logoUrl != null)
+                Image.network(
+                  team.logoUrl!,
+                  height: 50,
+                  width: 50,
+                )
+              else
+                const Icon(
+                  Icons.shield,
+                  color: Colors.white24,
+                  size: 40,
+                ),
+              const SizedBox(height: 12),
+              Text(
+                team.name,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isSelected
+                      ? AppColors.neonGreen
+                      : Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
                 ),
               ),
             ],

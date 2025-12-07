@@ -8,7 +8,7 @@ part of 'bet_model.dart';
 
 class BetAdapter extends TypeAdapter<Bet> {
   @override
-  final int typeId = 1;
+  final int typeId = 0;
 
   @override
   Bet read(BinaryReader reader) {
@@ -23,14 +23,18 @@ class BetAdapter extends TypeAdapter<Bet> {
       stake: fields[3] as double,
       odd: fields[4] as double,
       result: fields[5] as BetResult,
-      notes: fields[6] as String?,
+      notes: fields[6] as String,
+      pandaMatchId: fields[7] as int?,
+      gameNumber: fields[8] as int?,
+      side: fields[9] as LoLSide?,
+      pickedTeamId: fields[10] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Bet obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +48,15 @@ class BetAdapter extends TypeAdapter<Bet> {
       ..writeByte(5)
       ..write(obj.result)
       ..writeByte(6)
-      ..write(obj.notes);
+      ..write(obj.notes)
+      ..writeByte(7)
+      ..write(obj.pandaMatchId)
+      ..writeByte(8)
+      ..write(obj.gameNumber)
+      ..writeByte(9)
+      ..write(obj.side)
+      ..writeByte(10)
+      ..write(obj.pickedTeamId);
   }
 
   @override
@@ -58,40 +70,89 @@ class BetAdapter extends TypeAdapter<Bet> {
           typeId == other.typeId;
 }
 
+class LoLSideAdapter extends TypeAdapter<LoLSide> {
+  @override
+  final int typeId = 4;
+
+  @override
+  LoLSide read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return LoLSide.blue;
+      case 1:
+        return LoLSide.red;
+      default:
+        return LoLSide.blue;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, LoLSide obj) {
+    switch (obj) {
+      case LoLSide.blue:
+        writer.writeByte(0);
+        break;
+      case LoLSide.red:
+        writer.writeByte(1);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LoLSideAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
 class BetResultAdapter extends TypeAdapter<BetResult> {
   @override
-  final int typeId = 0;
+  final int typeId = 1;
 
   @override
   BetResult read(BinaryReader reader) {
     switch (reader.readByte()) {
       case 0:
-        return BetResult.win;
-      case 1:
-        return BetResult.loss;
-      case 2:
         return BetResult.pending;
+      case 1:
+        return BetResult.win;
+      case 2:
+        return BetResult.loss;
       case 3:
         return BetResult.voided;
+      case 4:
+        return BetResult.halfWin;
+      case 5:
+        return BetResult.halfLoss;
       default:
-        return BetResult.win;
+        return BetResult.pending;
     }
   }
 
   @override
   void write(BinaryWriter writer, BetResult obj) {
     switch (obj) {
-      case BetResult.win:
+      case BetResult.pending:
         writer.writeByte(0);
         break;
-      case BetResult.loss:
+      case BetResult.win:
         writer.writeByte(1);
         break;
-      case BetResult.pending:
+      case BetResult.loss:
         writer.writeByte(2);
         break;
       case BetResult.voided:
         writer.writeByte(3);
+        break;
+      case BetResult.halfWin:
+        writer.writeByte(4);
+        break;
+      case BetResult.halfLoss:
+        writer.writeByte(5);
         break;
     }
   }

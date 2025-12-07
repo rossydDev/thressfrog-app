@@ -3,6 +3,7 @@ import 'package:thressfrog_app/features/gamification/profile_stats_page.dart';
 
 import '../../../core/state/bankroll_controller.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../oracle/oracle_page.dart';
 import '../../settings/settings_page.dart';
 
 class ThresholdAppBar extends StatelessWidget
@@ -164,6 +165,25 @@ class ThresholdAppBar extends StatelessWidget
                 ),
 
                 const SizedBox(width: 16),
+
+                IconButton(
+                  icon: const Icon(
+                    Icons.visibility,
+                    color: AppColors.neonPurple,
+                  ),
+                  tooltip: "Lente do Oráculo",
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const OraclePage(),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(width: 8),
 
                 // 3. BOTÃO CONFIG (Direita)
                 IconButton(
