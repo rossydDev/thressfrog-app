@@ -69,7 +69,7 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
 
 class InvestorProfileAdapter extends TypeAdapter<InvestorProfile> {
   @override
-  final int typeId = 2;
+  final int typeId = 5;
 
   @override
   InvestorProfile read(BinaryReader reader) {

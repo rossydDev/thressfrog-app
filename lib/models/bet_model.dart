@@ -2,7 +2,18 @@ import 'package:hive/hive.dart';
 
 part 'bet_model.g.dart';
 
-// [NOVO] Enum para definir o lado do mapa (Azul/Vermelho)
+@HiveType(typeId: 2)
+enum BetResult {
+  @HiveField(0)
+  pending,
+  @HiveField(1)
+  win,
+  @HiveField(2)
+  loss,
+  @HiveField(3)
+  voided,
+}
+
 @HiveType(typeId: 4)
 enum LoLSide {
   @HiveField(0)
@@ -12,56 +23,57 @@ enum LoLSide {
 }
 
 @HiveType(typeId: 1)
-enum BetResult {
-  @HiveField(0)
-  pending,
-  @HiveField(1)
-  win,
-  @HiveField(2)
-  loss,
-  @HiveField(3)
-  voided, // Anulada/Devolvida
-  @HiveField(4)
-  halfWin, // Ganhou metade
-  @HiveField(5)
-  halfLoss, // Perdeu metade
-}
-
-@HiveType(typeId: 0)
 class Bet extends HiveObject {
-  // --- CAMPOS ANTIGOS (Mantidos) ---
+  // --- CAMPOS BÁSICOS ---
   @HiveField(0)
   final String id;
-
   @HiveField(1)
-  final String matchTitle; // Ex: "T1 vs Gen.G"
-
+  final String matchTitle;
   @HiveField(2)
   final DateTime date;
-
   @HiveField(3)
   final double stake;
-
   @HiveField(4)
   final double odd;
-
   @HiveField(5)
   final BetResult result;
-
   @HiveField(6)
   final String notes;
 
+  // --- DADOS API (V1.0) ---
   @HiveField(7)
   final int? pandaMatchId;
-
   @HiveField(8)
-  final int? gameNumber;
-
+  final int? pickedTeamId;
   @HiveField(9)
+  final int? gameNumber;
+  @HiveField(10)
   final LoLSide? side;
 
-  @HiveField(10)
-  final int? pickedTeamId;
+  // --- DADOS DO GRIMÓRIO (TÁTICOS V2.0) ---
+
+  // Preenchidos na CRIAÇÃO
+  @HiveField(11)
+  final List<String>? myTeamDraft; // Campeões do seu time
+
+  @HiveField(17)
+  final List<String>? enemyTeamDraft; // [NOVO] Campeões inimigos
+
+  // Preenchidos na RESOLUÇÃO (Pós-Jogo)
+  @HiveField(12)
+  final int? towers;
+
+  @HiveField(13)
+  final int? dragons;
+
+  @HiveField(14)
+  final int? teamKills; // Total de abates do seu time
+
+  @HiveField(15)
+  final int? baronNashors;
+
+  @HiveField(16)
+  final int? matchDuration; // Tempo em minutos
 
   Bet({
     required this.id,
@@ -70,35 +82,34 @@ class Bet extends HiveObject {
     required this.stake,
     required this.odd,
     required this.result,
-    required this.notes,
+    this.notes = '',
     this.pandaMatchId,
+    this.pickedTeamId,
     this.gameNumber,
     this.side,
-    this.pickedTeamId,
+    this.myTeamDraft,
+    this.enemyTeamDraft,
+    this.towers,
+    this.dragons,
+    this.teamKills,
+    this.baronNashors,
+    this.matchDuration,
   });
 
-  // Getters Úteis
-  bool get isGreen =>
-      result == BetResult.win ||
-      result == BetResult.halfWin;
-  bool get isRed =>
-      result == BetResult.loss ||
-      result == BetResult.halfLoss;
+  // Getters auxiliares
+  double get profit =>
+      result == BetResult.win ? (stake * odd) - stake : 0.0;
 
-  // Cálculo de Lucro/Prejuízo Real
   double get netImpact {
-    if (result == BetResult.win) {
-      return (stake * odd) - stake;
-    }
-    if (result == BetResult.halfWin) {
-      return ((stake * odd) - stake) / 2;
-    }
+    if (result == BetResult.win) return profit;
     if (result == BetResult.loss) return -stake;
-    if (result == BetResult.halfLoss) return -stake / 2;
-    return 0.0; // pending ou voided
+    return 0.0;
   }
 
-  // Método copyWith para facilitar edições mantendo os dados novos
+  bool get isGreen => result == BetResult.win;
+  bool get isRed => result == BetResult.loss;
+
+  // CopyWith atualizado com todos os campos novos
   Bet copyWith({
     String? id,
     String? matchTitle,
@@ -108,9 +119,16 @@ class Bet extends HiveObject {
     BetResult? result,
     String? notes,
     int? pandaMatchId,
+    int? pickedTeamId,
     int? gameNumber,
     LoLSide? side,
-    int? pickedTeamId,
+    List<String>? myTeamDraft,
+    List<String>? enemyTeamDraft,
+    int? towers,
+    int? dragons,
+    int? teamKills,
+    int? baronNashors,
+    int? matchDuration,
   }) {
     return Bet(
       id: id ?? this.id,
@@ -121,13 +139,16 @@ class Bet extends HiveObject {
       result: result ?? this.result,
       notes: notes ?? this.notes,
       pandaMatchId: pandaMatchId ?? this.pandaMatchId,
+      pickedTeamId: pickedTeamId ?? this.pickedTeamId,
       gameNumber: gameNumber ?? this.gameNumber,
       side: side ?? this.side,
-      pickedTeamId: pickedTeamId ?? this.pickedTeamId,
+      myTeamDraft: myTeamDraft ?? this.myTeamDraft,
+      enemyTeamDraft: enemyTeamDraft ?? this.enemyTeamDraft,
+      towers: towers ?? this.towers,
+      dragons: dragons ?? this.dragons,
+      teamKills: teamKills ?? this.teamKills,
+      baronNashors: baronNashors ?? this.baronNashors,
+      matchDuration: matchDuration ?? this.matchDuration,
     );
   }
-
-  double get potentialReturn => stake * odd;
-
-  double get profit => netImpact;
 }

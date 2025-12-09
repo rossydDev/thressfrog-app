@@ -12,18 +12,29 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
 
-  // Registrar Adapters (Na ordem dos TypeIDs)
-  Hive.registerAdapter(BetResultAdapter()); // ID 0
-  Hive.registerAdapter(BetAdapter()); // ID 1
-  Hive.registerAdapter(InvestorProfileAdapter()); // ID 2
-  Hive.registerAdapter(UserProfileAdapter()); // ID 3
+  // --- REGISTRO DOS ADAPTERS (Organizado por IDs) ---
+  // ID 1: Bet
+  Hive.registerAdapter(BetAdapter());
+
+  // ID 2: BetResult
+  Hive.registerAdapter(BetResultAdapter());
+
+  // ID 3: UserProfile
+  Hive.registerAdapter(UserProfileAdapter());
+
+  // ID 4: LoLSide
   Hive.registerAdapter(LoLSideAdapter());
 
+  // ID 5: InvestorProfile (Novo ID!)
+  Hive.registerAdapter(InvestorProfileAdapter());
+
+  // Carrega os campeões em segundo plano
   ChampionService().getChampions();
 
-  // Abrir caixas
+  // Abre as caixas
   await Hive.openBox('settings');
   await Hive.openBox<Bet>('bets');
+
   runApp(const ThressFrogApp());
 }
 
@@ -32,17 +43,14 @@ class ThressFrogApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lógica do Porteiro:
-    // Verifica se já existe um 'user_profile' salvo na caixa de settings
     final settingsBox = Hive.box('settings');
+    // Verifica se já tem perfil criado
     final hasUser = settingsBox.containsKey('user_profile');
 
     return MaterialApp(
       title: 'ThressFrog',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-
-      // Se tem usuário -> Home. Se não tem -> Onboarding.
       home: hasUser
           ? const HomePage()
           : const OnboardingPage(),

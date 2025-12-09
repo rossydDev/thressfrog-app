@@ -8,7 +8,7 @@ part of 'bet_model.dart';
 
 class BetAdapter extends TypeAdapter<Bet> {
   @override
-  final int typeId = 0;
+  final int typeId = 1;
 
   @override
   Bet read(BinaryReader reader) {
@@ -25,16 +25,23 @@ class BetAdapter extends TypeAdapter<Bet> {
       result: fields[5] as BetResult,
       notes: fields[6] as String,
       pandaMatchId: fields[7] as int?,
-      gameNumber: fields[8] as int?,
-      side: fields[9] as LoLSide?,
-      pickedTeamId: fields[10] as int?,
+      pickedTeamId: fields[8] as int?,
+      gameNumber: fields[9] as int?,
+      side: fields[10] as LoLSide?,
+      myTeamDraft: (fields[11] as List?)?.cast<String>(),
+      enemyTeamDraft: (fields[17] as List?)?.cast<String>(),
+      towers: fields[12] as int?,
+      dragons: fields[13] as int?,
+      teamKills: fields[14] as int?,
+      baronNashors: fields[15] as int?,
+      matchDuration: fields[16] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Bet obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -52,11 +59,25 @@ class BetAdapter extends TypeAdapter<Bet> {
       ..writeByte(7)
       ..write(obj.pandaMatchId)
       ..writeByte(8)
-      ..write(obj.gameNumber)
+      ..write(obj.pickedTeamId)
       ..writeByte(9)
-      ..write(obj.side)
+      ..write(obj.gameNumber)
       ..writeByte(10)
-      ..write(obj.pickedTeamId);
+      ..write(obj.side)
+      ..writeByte(11)
+      ..write(obj.myTeamDraft)
+      ..writeByte(17)
+      ..write(obj.enemyTeamDraft)
+      ..writeByte(12)
+      ..write(obj.towers)
+      ..writeByte(13)
+      ..write(obj.dragons)
+      ..writeByte(14)
+      ..write(obj.teamKills)
+      ..writeByte(15)
+      ..write(obj.baronNashors)
+      ..writeByte(16)
+      ..write(obj.matchDuration);
   }
 
   @override
@@ -66,6 +87,55 @@ class BetAdapter extends TypeAdapter<Bet> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is BetAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class BetResultAdapter extends TypeAdapter<BetResult> {
+  @override
+  final int typeId = 2;
+
+  @override
+  BetResult read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return BetResult.pending;
+      case 1:
+        return BetResult.win;
+      case 2:
+        return BetResult.loss;
+      case 3:
+        return BetResult.voided;
+      default:
+        return BetResult.pending;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, BetResult obj) {
+    switch (obj) {
+      case BetResult.pending:
+        writer.writeByte(0);
+        break;
+      case BetResult.win:
+        writer.writeByte(1);
+        break;
+      case BetResult.loss:
+        writer.writeByte(2);
+        break;
+      case BetResult.voided:
+        writer.writeByte(3);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BetResultAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
@@ -105,65 +175,6 @@ class LoLSideAdapter extends TypeAdapter<LoLSide> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is LoLSideAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
-}
-
-class BetResultAdapter extends TypeAdapter<BetResult> {
-  @override
-  final int typeId = 1;
-
-  @override
-  BetResult read(BinaryReader reader) {
-    switch (reader.readByte()) {
-      case 0:
-        return BetResult.pending;
-      case 1:
-        return BetResult.win;
-      case 2:
-        return BetResult.loss;
-      case 3:
-        return BetResult.voided;
-      case 4:
-        return BetResult.halfWin;
-      case 5:
-        return BetResult.halfLoss;
-      default:
-        return BetResult.pending;
-    }
-  }
-
-  @override
-  void write(BinaryWriter writer, BetResult obj) {
-    switch (obj) {
-      case BetResult.pending:
-        writer.writeByte(0);
-        break;
-      case BetResult.win:
-        writer.writeByte(1);
-        break;
-      case BetResult.loss:
-        writer.writeByte(2);
-        break;
-      case BetResult.voided:
-        writer.writeByte(3);
-        break;
-      case BetResult.halfWin:
-        writer.writeByte(4);
-        break;
-      case BetResult.halfLoss:
-        writer.writeByte(5);
-        break;
-    }
-  }
-
-  @override
-  int get hashCode => typeId.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is BetResultAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
