@@ -5,7 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../models/bet_model.dart';
 import '../../models/lol_match_model.dart';
 import '../create_bet/select_match_screen.dart';
-import '../create_bet/widget/draft_selector.dart';
+import 'widgets/draft_selector.dart';
 
 class CreateBetPage extends StatefulWidget {
   final Bet? betToEdit;
@@ -165,7 +165,7 @@ class _CreateBetPageState extends State<CreateBetPage> {
         // Mantém dados antigos se for edição
         towers: widget.betToEdit?.towers,
         dragons: widget.betToEdit?.dragons,
-        teamKills: widget.betToEdit?.teamKills,
+        totalMatchKills: widget.betToEdit?.totalMatchKills,
         matchDuration: widget.betToEdit?.matchDuration,
       );
 

@@ -67,7 +67,7 @@ class Bet extends HiveObject {
   final int? dragons;
 
   @HiveField(14)
-  final int? teamKills; // Total de abates do seu time
+  final int? totalMatchKills; // Total de abates do seu time
 
   @HiveField(15)
   final int? baronNashors;
@@ -91,7 +91,7 @@ class Bet extends HiveObject {
     this.enemyTeamDraft,
     this.towers,
     this.dragons,
-    this.teamKills,
+    this.totalMatchKills,
     this.baronNashors,
     this.matchDuration,
   });
@@ -126,7 +126,7 @@ class Bet extends HiveObject {
     List<String>? enemyTeamDraft,
     int? towers,
     int? dragons,
-    int? teamKills,
+    int? totalMatchKills,
     int? baronNashors,
     int? matchDuration,
   }) {
@@ -146,7 +146,8 @@ class Bet extends HiveObject {
       enemyTeamDraft: enemyTeamDraft ?? this.enemyTeamDraft,
       towers: towers ?? this.towers,
       dragons: dragons ?? this.dragons,
-      teamKills: teamKills ?? this.teamKills,
+      totalMatchKills:
+          totalMatchKills ?? this.totalMatchKills,
       baronNashors: baronNashors ?? this.baronNashors,
       matchDuration: matchDuration ?? this.matchDuration,
     );

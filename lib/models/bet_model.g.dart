@@ -32,7 +32,7 @@ class BetAdapter extends TypeAdapter<Bet> {
       enemyTeamDraft: (fields[17] as List?)?.cast<String>(),
       towers: fields[12] as int?,
       dragons: fields[13] as int?,
-      teamKills: fields[14] as int?,
+      totalMatchKills: fields[14] as int?,
       baronNashors: fields[15] as int?,
       matchDuration: fields[16] as int?,
     );
@@ -73,7 +73,7 @@ class BetAdapter extends TypeAdapter<Bet> {
       ..writeByte(13)
       ..write(obj.dragons)
       ..writeByte(14)
-      ..write(obj.teamKills)
+      ..write(obj.totalMatchKills)
       ..writeByte(15)
       ..write(obj.baronNashors)
       ..writeByte(16)

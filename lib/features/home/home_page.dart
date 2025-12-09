@@ -6,6 +6,7 @@ import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/bet_model.dart';
 import '../create_bet/create_bet_page.dart';
+import 'widgets/grimoire_resolution_modal.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -369,34 +370,88 @@ class _HomePageState extends State<HomePage> {
                       // --- BOTÕES LIBERADOS (Green/Red) ---
                       Row(
                         children: [
+                          // BOTÃO GREEN
                           Expanded(
                             child: _buildActionBtnCompact(
                               label: "GREEN",
                               color: AppColors.neonGreen,
                               icon: Icons.trending_up,
                               onTap: () {
-                                BankrollController.instance
-                                    .resolveBet(
-                                      bet,
-                                      BetResult.win,
-                                    );
-                                Navigator.pop(context);
+                                // Verifica se é aposta do Grimório (tem Draft?)
+                                if (bet.myTeamDraft !=
+                                        null &&
+                                    bet
+                                        .myTeamDraft!
+                                        .isNotEmpty) {
+                                  Navigator.pop(
+                                    context,
+                                  ); // Fecha o menu de opções
+                                  // Abre o Questionário Tático
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled:
+                                        true,
+                                    backgroundColor:
+                                        Colors.transparent,
+                                    builder: (ctx) =>
+                                        GrimoireResolutionModal(
+                                          bet: bet,
+                                          intendedResult:
+                                              BetResult.win,
+                                        ),
+                                  );
+                                } else {
+                                  // Aposta Simples: Resolve direto
+                                  BankrollController
+                                      .instance
+                                      .resolveBet(
+                                        bet,
+                                        BetResult.win,
+                                      );
+                                  Navigator.pop(context);
+                                }
                               },
                             ),
                           ),
                           const SizedBox(width: 12),
+
+                          // BOTÃO RED
                           Expanded(
                             child: _buildActionBtnCompact(
                               label: "RED",
                               color: AppColors.errorRed,
                               icon: Icons.trending_down,
                               onTap: () {
-                                BankrollController.instance
-                                    .resolveBet(
-                                      bet,
-                                      BetResult.loss,
-                                    );
-                                Navigator.pop(context);
+                                // Mesma lógica para o RED
+                                if (bet.myTeamDraft !=
+                                        null &&
+                                    bet
+                                        .myTeamDraft!
+                                        .isNotEmpty) {
+                                  Navigator.pop(context);
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled:
+                                        true,
+                                    backgroundColor:
+                                        Colors.transparent,
+                                    builder: (ctx) =>
+                                        GrimoireResolutionModal(
+                                          bet: bet,
+                                          intendedResult:
+                                              BetResult
+                                                  .loss,
+                                        ),
+                                  );
+                                } else {
+                                  BankrollController
+                                      .instance
+                                      .resolveBet(
+                                        bet,
+                                        BetResult.loss,
+                                      );
+                                  Navigator.pop(context);
+                                }
                               },
                             ),
                           ),
