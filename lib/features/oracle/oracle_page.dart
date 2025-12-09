@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
-import 'package:thressfrog_app/features/oracle/widgets/league_card.dart';
-import 'package:thressfrog_app/features/oracle/widgets/league_detail_page.dart';
 
 import '../../core/services/pandascore_service.dart';
 import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
-import '../../models/bet_model.dart';
+import '../../models/champion_performance.dart';
 import '../../models/league_stats_model.dart';
+import 'widgets/champion_stat_tile.dart'; // [NOVO]
+import 'widgets/league_card.dart';
+import 'widgets/league_detail_page.dart';
 
 class OraclePage extends StatefulWidget {
   const OraclePage({super.key});
@@ -17,151 +17,159 @@ class OraclePage extends StatefulWidget {
 }
 
 class _OraclePageState extends State<OraclePage> {
-  final _pandaService = PandaScoreService();
-
-  // Estado do Carrossel Global
   late Future<List<LeagueStats>> _leagueStatsFuture;
-
-  // Ligas Ativas (Filtro do Usuário)
-  List<String> _activeLeagues = [];
 
   @override
   void initState() {
     super.initState();
-    _loadPreferences();
+    // Carrega dados da API (Lado Servidor)
+    _leagueStatsFuture = PandaScoreService()
+        .getLeagueStats();
   }
 
-  // 1. Carrega as preferências do Hive ou usa o padrão
-  void _loadPreferences() {
-    final box = Hive.box('settings');
-    final savedLeagues = box.get(
-      'oracle_leagues',
-      defaultValue: null,
-    );
+  @override
+  Widget build(BuildContext context) {
+    // Carrega dados Locais (Lado Cliente)
+    final topChampions = BankrollController.instance
+        .getTopChampions();
+    final objectiveStats = BankrollController.instance
+        .getObjectiveStats();
 
-    if (savedLeagues != null) {
-      // Converte a lista dinâmica do Hive para List<String>
-      _activeLeagues = List<String>.from(savedLeagues);
-    } else {
-      // Se nunca salvou, usa as padrões do Serviço
-      _activeLeagues = List.from(
-        PandaScoreService.defaultLeagues,
-      );
-    }
-
-    _refreshStats();
-  }
-
-  // Atualiza a busca na API com as ligas atuais
-  void _refreshStats() {
-    setState(() {
-      _leagueStatsFuture = _pandaService.getLeagueStats(
-        preferredLeagues: _activeLeagues,
-      );
-    });
-  }
-
-  // 2. O Dialog de Escolha (Dropdown/Modal)
-  void _showFilterDialog() {
-    // Lista de todas as opções que queremos oferecer
-    final allOptions = [
-      'CBLOL',
-      'LCK',
-      'LPL',
-      'LEC',
-      'LCS',
-      'KeSPA Cup',
-      'Worlds',
-      'MSI',
-      'LJL',
-      'PCS',
-    ];
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        // StatefulBuilder permite atualizar os checkboxes dentro do Dialog sem fechar
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              backgroundColor: AppColors.surfaceDark,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(
-                  color: AppColors.neonPurple,
-                  width: 1,
-                ),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("LENTE DO ORÁCULO"),
+          centerTitle: true,
+          bottom: const TabBar(
+            indicatorColor: AppColors.neonPurple,
+            labelColor: AppColors.neonPurple,
+            unselectedLabelColor: Colors.white38,
+            tabs: [
+              Tab(
+                icon: Icon(Icons.public),
+                text: "GLOBAL (API)",
               ),
-              title: const Row(
+              Tab(
+                icon: Icon(Icons.auto_stories),
+                text: "GRIMÓRIO (VOCÊ)",
+              ),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            // --- ABA 1: TENDÊNCIAS GLOBAIS (API) ---
+            _buildGlobalTrendsTab(),
+
+            // --- ABA 2: SEU GRIMÓRIO (LOCAL) ---
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.filter_list,
-                    color: AppColors.neonPurple,
+                  // 1. Seção de Objetivos (Over/Under)
+                  const Text(
+                    "Médias de Combate",
+                    style: TextStyle(
+                      color: AppColors.textWhite,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  SizedBox(width: 8),
-                  Text(
-                    "Filtrar Ligas",
-                    style: TextStyle(color: Colors.white),
+                  const SizedBox(height: 16),
+                  _buildObjectiveCard(objectiveStats),
+
+                  const SizedBox(height: 32),
+
+                  // 2. Seção de Campeões (Top Tier)
+                  const Text(
+                    "Seus Melhores Agentes",
+                    style: TextStyle(
+                      color: AppColors.neonGreen,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
+                  const SizedBox(height: 16),
+
+                  if (topChampions.isEmpty)
+                    _buildEmptyState(
+                      "Nenhum dado tático registrado.\nUse o 'Modo Grimório' ao criar apostas!",
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics:
+                          const NeverScrollableScrollPhysics(),
+                      itemCount: topChampions.length > 5
+                          ? 5
+                          : topChampions
+                                .length, // Mostra Top 5
+                      itemBuilder: (context, index) {
+                        return ChampionStatTile(
+                          performance: topChampions[index],
+                          index: index,
+                        );
+                      },
+                    ),
                 ],
               ),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ListView(
-                  shrinkWrap: true,
-                  children: allOptions.map((league) {
-                    final isSelected = _activeLeagues
-                        .contains(league);
-                    return CheckboxListTile(
-                      title: Text(
-                        league,
-                        style: const TextStyle(
-                          color: Colors.white,
-                        ),
-                      ),
-                      value: isSelected,
-                      activeColor: AppColors.neonPurple,
-                      checkColor: Colors.black,
-                      side: const BorderSide(
-                        color: Colors.white54,
-                      ),
-                      onChanged: (bool? val) {
-                        setStateDialog(() {
-                          if (val == true) {
-                            _activeLeagues.add(league);
-                          } else {
-                            _activeLeagues.remove(league);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- WIDGETS DA ABA API ---
+  Widget _buildGlobalTrendsTab() {
+    return FutureBuilder<List<LeagueStats>>(
+      future: _leagueStatsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState ==
+            ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: AppColors.neonPurple,
+            ),
+          );
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              "Erro no Oráculo: ${snapshot.error}",
+              style: const TextStyle(
+                color: AppColors.errorRed,
+              ),
+            ),
+          );
+        }
+
+        final stats = snapshot.data ?? [];
+        if (stats.isEmpty) {
+          return const Center(
+            child: Text("Nenhuma tendência encontrada."),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(20),
+          itemCount: stats.length,
+          separatorBuilder: (_, __) =>
+              const SizedBox(height: 20),
+          itemBuilder: (context, index) {
+            final stat = stats[index];
+            return LeagueCard(
+              stats: stat,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      LeagueDetailPage(stats: stat),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text(
-                    "CANCELAR",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.neonPurple,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () {
-                    // Salva no Hive e recarrega a tela
-                    Hive.box(
-                      'settings',
-                    ).put('oracle_leagues', _activeLeagues);
-                    _refreshStats();
-                    Navigator.pop(ctx);
-                  },
-                  child: const Text("APLICAR FILTRO"),
-                ),
-              ],
             );
           },
         );
@@ -169,351 +177,205 @@ class _OraclePageState extends State<OraclePage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Filtra apostas manuais vs oficiais
-    final officialBets = BankrollController.instance.bets
-        .where((bet) {
-          return bet.pandaMatchId != null &&
-              bet.pickedTeamId != null;
-        })
-        .toList();
+  // --- WIDGETS DA ABA GRIMÓRIO ---
 
-    return Scaffold(
-      backgroundColor: AppColors.deepBlack,
-      appBar: AppBar(
-        title: const Text("LENTE DO ORÁCULO"),
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(
-          color: AppColors.neonPurple,
-        ),
-        actions: [
-          // BOTÃO DE FILTRO (Funciona como um Dropdown avançado)
-          IconButton(
-            icon: const Icon(Icons.filter_list_alt),
-            tooltip: "Escolher Campeonatos",
-            onPressed: _showFilterDialog,
-          ),
-          // Botão de Refresh
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshStats,
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 40),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- SEÇÃO 1: CARROSSEL DE LIGAS ---
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                20,
-                20,
-                10,
-              ),
-              child: Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "Tendências Globais",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  // Mostra quantas ligas estão ativas no filtro
-                  Text(
-                    "${_activeLeagues.length} ligas ativas",
-                    style: const TextStyle(
-                      color: AppColors.neonPurple,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(
-              height: 180,
-              child: FutureBuilder<List<LeagueStats>>(
-                future: _leagueStatsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.neonPurple,
-                      ),
-                    );
-                  }
-                  if (!snapshot.hasData ||
-                      snapshot.data!.isEmpty) {
-                    return _buildEmptyState(
-                      "Nenhum dado encontrado para as ligas selecionadas.\nTente adicionar 'KeSPA Cup' no filtro.",
-                    );
-                  }
-
-                  return ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                    ),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: snapshot.data!.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(width: 16),
-                    itemBuilder: (context, index) {
-                      final stats = snapshot.data![index];
-
-                      return LeagueCard(
-                        stats: stats,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  LeagueDetailPage(
-                                    stats: stats,
-                                  ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // --- SEÇÃO 2: PERFORMANCE PESSOAL ---
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                "Sua Performance Oficial",
-                style: TextStyle(
-                  color: AppColors.neonGreen,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-
-            if (officialBets.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(40.0),
-                child: Column(
-                  children: const [
-                    Icon(
-                      Icons.lock_outline,
-                      size: 40,
-                      color: Colors.white24,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      "O Oráculo precisa de dados oficiais.\nUse a busca automática ao criar apostas para desbloquear análises.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white54,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              _buildMyStats(officialBets),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- WIDGETS AUXILIARES ---
-
-  Widget _buildEmptyState(String msg) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Text(
-          msg,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white38),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMyStats(List<Bet> bets) {
-    final sideStats = BankrollController.instance
-        .getUserSideStats();
-
-    final blueRate = sideStats['blueWinRate'] ?? 0.0;
-    final redRate = sideStats['redWinRate'] ?? 0.0;
-    final totalGamesWithSide =
-        (sideStats['blueTotal']! + sideStats['redTotal']!)
-            .toInt();
-
-    // Se o usuário não definiu lados em nenhuma aposta, mostra o básico
-    if (totalGamesWithSide == 0) {
-      return _buildSimpleStats(
-        bets,
-      ); // O card antigo simples
-    }
-
-    // 2. Monta o Card Visual Rico (Reaproveitando o estilo do LeagueCard)
+  Widget _buildObjectiveCard(ObjectiveStats stats) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppColors.surfaceDark,
-            const Color(0xFF1A1A1A),
-          ],
+          colors: [AppColors.surfaceDark, Colors.black],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.neonGreen.withValues(alpha: 0.3),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+          color: AppColors.neonPurple.withValues(
+            alpha: 0.3,
           ),
-        ],
+        ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.neonGreen.withValues(
-                    alpha: 0.2,
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.person,
-                  color: AppColors.neonGreen,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Seu Side Control",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    "Baseado nas suas escolhas manuais",
-                    style: TextStyle(
-                      color: Colors.white38,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // BARRA DE DUELO (Igual a do LeagueCard, mas com seus dados)
           Row(
             mainAxisAlignment:
                 MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "BLUE ${(blueRate * 100).toStringAsFixed(0)}%",
-                style: const TextStyle(
-                  color: Colors.blueAccent,
-                  fontWeight: FontWeight.bold,
-                ),
+              _buildMiniStat(
+                "Média Kills",
+                stats.avgKills.toStringAsFixed(1),
+                Icons.my_location,
+                Colors.redAccent,
               ),
-              Text(
-                "${(redRate * 100).toStringAsFixed(0)}% RED",
-                style: const TextStyle(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.bold,
-                ),
+              Container(
+                width: 1,
+                height: 40,
+                color: Colors.white10,
+              ),
+              _buildMiniStat(
+                "Duração",
+                "${stats.avgDuration.toStringAsFixed(0)} min",
+                Icons.timer,
+                Colors.tealAccent,
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Container(
-            height: 8,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.redAccent.withValues(
-                alpha: 0.2,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(
-              children: [
-                Flexible(
-                  flex:
-                      (blueRate * 100).toInt() == 0 &&
-                          (redRate * 100).toInt() == 0
-                      ? 50
-                      : (blueRate * 100).toInt(),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.blueAccent,
-                      borderRadius: BorderRadius.circular(
-                        4,
-                      ),
-                    ),
-                  ),
-                ),
-                Flexible(
-                  flex:
-                      (blueRate * 100).toInt() == 0 &&
-                          (redRate * 100).toInt() == 0
-                      ? 50
-                      : ((1 - blueRate) * 100).toInt(),
-                  child: Container(
-                    color: Colors.transparent,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 20),
+          const Divider(color: Colors.white10),
+          const SizedBox(height: 16),
+          const Text(
+            "Impacto em Vitórias",
+            style: TextStyle(
+              color: Colors.white38,
+              fontSize: 10,
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            "$totalGamesWithSide jogos com lado identificado",
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 12,
-            ),
+          const SizedBox(height: 8),
+          _buildComparisonRow(
+            "Torres",
+            stats.avgTowersWin,
+            stats.avgTowersLoss,
+            AppColors.neonPurple,
+          ),
+          const SizedBox(height: 12),
+          _buildComparisonRow(
+            "Dragões",
+            stats.avgDragonsWin,
+            stats.avgDragonsLoss,
+            Colors.orangeAccent,
           ),
         ],
       ),
     );
   }
-}
 
-Widget _buildSimpleStats(List<Bet> bets) {
-  // ... seu código antigo do card simples ...
-  return const Center(
-    child: Text(
-      "Defina o Lado (Blue/Red) nas suas apostas para ver estatísticas avançadas.",
-      style: TextStyle(color: Colors.white38),
-      textAlign: TextAlign.center,
-    ),
-  );
+  Widget _buildMiniStat(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white38,
+            fontSize: 10,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildComparisonRow(
+    String label,
+    double winVal,
+    double lossVal,
+    Color color,
+  ) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 60,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Row(
+            children: [
+              // Barra Vitória
+              Expanded(
+                flex: (winVal * 10).toInt() + 1,
+                child: Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: AppColors.neonGreen,
+                    borderRadius: BorderRadius.horizontal(
+                      left: Radius.circular(4),
+                    ),
+                  ),
+                  alignment: Alignment.centerLeft,
+                ),
+              ),
+              // Separador
+              Container(
+                width: 2,
+                height: 12,
+                color: Colors.black,
+              ),
+              // Barra Derrota
+              Expanded(
+                flex: (lossVal * 10).toInt() + 1,
+                child: Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: AppColors.errorRed.withValues(
+                      alpha: 0.5,
+                    ),
+                    borderRadius: BorderRadius.horizontal(
+                      right: Radius.circular(4),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          "${winVal.toStringAsFixed(1)} vs ${lossVal.toStringAsFixed(1)}",
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState(String msg) {
+    return Container(
+      padding: const EdgeInsets.all(30),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDark.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white10,
+          style: BorderStyle.solid,
+        ),
+      ),
+      child: Center(
+        child: Column(
+          children: [
+            const Icon(
+              Icons.auto_stories_outlined,
+              size: 40,
+              color: Colors.white24,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              msg,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white38),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

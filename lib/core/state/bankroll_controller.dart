@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 import '../../models/bet_model.dart';
+import '../../models/champion_performance.dart';
 import '../../models/user_profile.dart';
 import '../services/pandascore_service.dart';
 
@@ -491,5 +492,128 @@ class BankrollController extends ChangeNotifier {
       'redWinRate': redGames > 0 ? redWins / redGames : 0.0,
       'redTotal': redGames.toDouble(),
     };
+  }
+
+  List<ChampionPerformance> getTopChampions() {
+    // Mapa temporário: "Ahri" -> {games: 5, wins: 3, profit: 50.0}
+    final Map<String, Map<String, dynamic>> statsMap = {};
+
+    for (var bet in _bets) {
+      // Pula apostas pendentes ou anuladas, ou sem draft
+      if (bet.result == BetResult.pending ||
+          bet.result == BetResult.voided) {
+        continue;
+      }
+      if (bet.myTeamDraft == null ||
+          bet.myTeamDraft!.isEmpty) {
+        continue;
+      }
+
+      final profit = bet.netImpact;
+      final isWin = bet.result == BetResult.win;
+
+      // Para cada campeão no draft dessa aposta
+      for (var champId in bet.myTeamDraft!) {
+        if (!statsMap.containsKey(champId)) {
+          statsMap[champId] = {
+            'games': 0,
+            'wins': 0,
+            'profit': 0.0,
+          };
+        }
+
+        statsMap[champId]!['games'] += 1;
+        statsMap[champId]!['profit'] += profit;
+        if (isWin) {
+          statsMap[champId]!['wins'] += 1;
+        }
+      }
+    }
+
+    // Transforma o Mapa em Lista de Objetos
+    final List<ChampionPerformance> performanceList = [];
+    statsMap.forEach((id, data) {
+      performanceList.add(
+        ChampionPerformance(
+          championId: id,
+          totalGames: data['games'],
+          wins: data['wins'],
+          netProfit: data['profit'],
+        ),
+      );
+    });
+
+    // Ordena: Quem dá mais lucro primeiro (Top Tier)
+    // Se quiser ordenar por Winrate: b.winRate.compareTo(a.winRate)
+    performanceList.sort(
+      (a, b) => b.netProfit.compareTo(a.netProfit),
+    );
+
+    return performanceList;
+  }
+
+  // 2. Motor de Análise de Objetivos (Over/Under)
+  ObjectiveStats getObjectiveStats() {
+    int winCount = 0;
+    int lossCount = 0;
+
+    int towersWin = 0;
+    int towersLoss = 0;
+
+    int dragonsWin = 0;
+    int dragonsLoss = 0;
+
+    int totalKills = 0;
+    int totalDuration = 0;
+    int gamesWithStats = 0;
+
+    for (var bet in _bets) {
+      if (bet.result == BetResult.pending ||
+          bet.result == BetResult.voided) {
+        continue;
+      }
+
+      // Acumula médias gerais (se tiver os dados)
+      if (bet.totalMatchKills != null &&
+          bet.matchDuration != null) {
+        totalKills += bet.totalMatchKills!;
+        totalDuration += bet.matchDuration!;
+        gamesWithStats++;
+      }
+
+      // Separa médias de Vitória vs Derrota (para análise de objetivos)
+      if (bet.towers != null && bet.dragons != null) {
+        if (bet.result == BetResult.win) {
+          winCount++;
+          towersWin += bet.towers!;
+          dragonsWin += bet.dragons!;
+        } else if (bet.result == BetResult.loss) {
+          lossCount++;
+          towersLoss += bet.towers!;
+          dragonsLoss += bet.dragons!;
+        }
+      }
+    }
+
+    return ObjectiveStats(
+      avgTowersWin: winCount > 0
+          ? towersWin / winCount
+          : 0.0,
+      avgTowersLoss: lossCount > 0
+          ? towersLoss / lossCount
+          : 0.0,
+      avgDragonsWin: winCount > 0
+          ? dragonsWin / winCount
+          : 0.0,
+      avgDragonsLoss: lossCount > 0
+          ? dragonsLoss / lossCount
+          : 0.0,
+      avgKills: gamesWithStats > 0
+          ? totalKills / gamesWithStats
+          : 0.0,
+      avgDuration: gamesWithStats > 0
+          ? totalDuration / gamesWithStats
+          : 0.0,
+    );
   }
 }
