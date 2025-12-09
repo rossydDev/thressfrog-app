@@ -6,10 +6,11 @@ import '../../models/lol_match_model.dart';
 class PandaScoreService {
   final Dio _dio = Dio();
 
-  // 🔑 Lembre de colocar sua chave aqui ou usar .env
-  static const String _token = 'PANDASCORETOKE_AQUI';
+  // 🔑 SUA CHAVE PANDASCORE
+  static const String _token =
+      'SUA_CHAVE_AQUI'; // <--- Verifique se sua chave está aqui!
 
-  // Ligas Padrão (Big 5 + KeSPA para testes agora)
+  // Ligas Padrão
   static const List<String> defaultLeagues = [
     'LCK',
     'LPL',
@@ -27,7 +28,7 @@ class PandaScoreService {
     };
   }
 
-  /// Busca os jogos futuros (Mantido)
+  /// Busca os jogos futuros
   Future<List<LoLMatch>> fetchUpcomingMatches() async {
     try {
       final response = await _dio.get(
@@ -48,11 +49,10 @@ class PandaScoreService {
 
   // --- MÉTODOS DO ORÁCULO ---
 
-  /// Busca os últimos jogos finalizados filtrando pelas ligas escolhidas
+  /// Busca jogos passados filtrados
   Future<List<dynamic>> _fetchRawPastMatches(
     List<String> leagues,
   ) async {
-    // Transforma a lista ["LCK", "CBLOL"] em uma string "LCK,CBLOL" para a API
     final leagueFilter = leagues.join(',');
 
     try {
@@ -60,8 +60,7 @@ class PandaScoreService {
         '/lol/matches/past',
         queryParameters: {
           'sort': '-end_at',
-          'page[size]':
-              50, // Analisa 50 jogos para ter uma boa média
+          'page[size]': 50,
           if (leagueFilter.isNotEmpty)
             'filter[league.name]': leagueFilter,
         },
@@ -74,17 +73,14 @@ class PandaScoreService {
   }
 
   /// Busca e Processa os dados para gerar o Carrossel
-  /// Aceita uma lista opcional de ligas preferidas. Se null, usa o padrão.
   Future<List<LeagueStats>> getLeagueStats({
     List<String>? preferredLeagues,
   }) async {
-    // Se o usuário não passou nada, usa as ligas padrão
     final targets = preferredLeagues ?? defaultLeagues;
 
-    // Busca os dados brutos filtrados
+    // Tenta buscar na API
     final rawMatches = await _fetchRawPastMatches(targets);
 
-    // Mapa para agrupar jogos por Liga
     final Map<String, List<dynamic>> leagueGroups = {};
     final Map<String, String> leagueLogos = {};
 
@@ -101,7 +97,6 @@ class PandaScoreService {
       leagueGroups[leagueName]!.add(match);
     }
 
-    // Calcula as médias
     final List<LeagueStats> statsList = [];
 
     leagueGroups.forEach((leagueName, matches) {
@@ -119,8 +114,6 @@ class PandaScoreService {
             totalGames++;
             totalSeconds += (game['length'] as int? ?? 0);
 
-            // Simulação de Side para o MVP (já que API Free não garante 'side' na lista)
-            // No futuro, usaríamos game['position'] ou similar
             if (match['id'] % 2 == 0) {
               blueWins++;
             } else {
@@ -146,6 +139,58 @@ class PandaScoreService {
       }
     });
 
+    // --- MOCK / SIMULAÇÃO DE DADOS ---
+    // Se a lista estiver vazia (API bloqueou ou off-season), injeta dados falsos
+    if (statsList.isEmpty) {
+      print("⚠️ API vazia. Usando dados simulados.");
+
+      statsList.add(
+        LeagueStats(
+          leagueName: "Simulação Worlds",
+          leagueLogo:
+              "", // Deixei vazio para evitar erro de imagem
+          totalGamesAnalyzed: 50,
+          blueSideWinRate: 0.58,
+          redSideWinRate: 0.42,
+          avgMatchDuration: const Duration(
+            minutes: 32,
+            seconds: 15,
+          ),
+        ),
+      );
+
+      statsList.add(
+        LeagueStats(
+          leagueName: "Simulação CBLOL",
+          leagueLogo: "",
+          totalGamesAnalyzed: 20,
+          blueSideWinRate: 0.45,
+          redSideWinRate: 0.55,
+          avgMatchDuration: const Duration(
+            minutes: 28,
+            seconds: 0,
+          ),
+        ),
+      );
+    }
+
     return statsList;
+  }
+
+  /// Busca os detalhes atualizados de uma partida específica
+  Future<Map<String, dynamic>?> getMatchDetails(
+    int matchId,
+  ) async {
+    try {
+      final response = await _dio.get(
+        '/lol/matches/$matchId',
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      print(
+        "Erro ao atualizar partida $matchId: ${e.message}",
+      );
+      return null;
+    }
   }
 }

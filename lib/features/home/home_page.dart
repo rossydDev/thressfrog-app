@@ -7,8 +7,40 @@ import '../../core/theme/app_theme.dart';
 import '../../models/bet_model.dart';
 import '../create_bet/create_bet_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  // Roda assim que a tela nasce
+  @override
+  void initState() {
+    super.initState();
+    // Faz a sincronização silenciosa ao abrir
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncData();
+    });
+  }
+
+  // Método centralizado de sync
+  Future<void> _syncData() async {
+    final count = await BankrollController.instance
+        .syncPendingBets();
+    if (count > 0 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "$count apostas atualizadas pela API! 🐸✅",
+          ),
+          backgroundColor: AppColors.neonGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,117 +55,135 @@ class HomePage extends StatelessWidget {
 
         return Scaffold(
           appBar: ThresholdAppBar(),
-          body: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20.0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
+          body: RefreshIndicator(
+            // [NOVIDADE] Puxar para atualizar (cor do loading)
+            color: AppColors.neonGreen,
+            backgroundColor: AppColors.surfaceDark,
+            onRefresh: _syncData, // Chama o sync ao puxar
+            child: SingleChildScrollView(
+              // Physics necessário para o RefreshIndicator funcionar mesmo com pouco conteúdo
+              physics:
+                  const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+              ),
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
 
-                const Text(
-                  "Banca Total",
-                  style: TextStyle(
-                    color: AppColors.textGrey,
-                    fontSize: 16,
+                  // Seção de Saldo (Sem o botão confuso agora)
+                  const Text(
+                    "Banca Total",
+                    style: TextStyle(
+                      color: AppColors.textGrey,
+                      fontSize: 16,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "R\$ ${bankroll.toStringAsFixed(2)}",
-                  style: const TextStyle(
-                    color: AppColors.textWhite,
-                    fontSize: 40,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -1.0,
+                  const SizedBox(height: 8),
+                  Text(
+                    "R\$ ${bankroll.toStringAsFixed(2)}",
+                    style: const TextStyle(
+                      color: AppColors.textWhite,
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -1.0,
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 30),
+                  const SizedBox(height: 30),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildSummaryCard(
-                        "Lucro Total",
-                        "R\$ ${profit.toStringAsFixed(2)}",
-                        isPositive: profit >= 0,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildSummaryCard(
-                        "Win Rate",
-                        winRate,
-                        isPositive: true,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                const BankrollChart(),
-
-                const SizedBox(height: 30),
-
-                Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "Últimos Pulos",
-                      style: TextStyle(
-                        color: AppColors.textWhite,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (bets.isNotEmpty)
-                      TextButton(
-                        onPressed: () {
-                          // Futuro: Navegar para histórico completo
-                        },
-                        child: Text(
-                          // [ATUALIZAÇÃO 1] Contador dinâmico
-                          "Ver tudo (${bets.length})",
-                          style: const TextStyle(
-                            color: AppColors.neonGreen,
-                          ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildSummaryCard(
+                          "Lucro Total",
+                          "R\$ ${profit.toStringAsFixed(2)}",
+                          isPositive: profit >= 0,
                         ),
                       ),
-                  ],
-                ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildSummaryCard(
+                          "Win Rate",
+                          winRate,
+                          isPositive: true,
+                        ),
+                      ),
+                    ],
+                  ),
 
-                Expanded(
-                  child: bets.isEmpty
-                      ? Center(
+                  const SizedBox(height: 24),
+
+                  const BankrollChart(),
+
+                  const SizedBox(height: 30),
+
+                  // Cabeçalho da Lista
+                  Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Últimos Pulos",
+                        style: TextStyle(
+                          color: AppColors.textWhite,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (bets.isNotEmpty)
+                        TextButton(
+                          onPressed: () {},
                           child: Text(
-                            "Nenhum pulo registrado.\nComece sua jornada!",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: AppColors.textGrey
-                                  .withValues(alpha: 0.5),
+                            "Ver tudo (${bets.length})",
+                            style: const TextStyle(
+                              color: AppColors.neonGreen,
                             ),
                           ),
-                        )
-                      : ListView.builder(
-                          itemCount: bets.length,
-                          itemBuilder: (context, index) {
-                            final bet = bets[index];
-                            return GestureDetector(
-                              onTap: () =>
-                                  _showResolveOptions(
-                                    context,
-                                    bet,
-                                  ),
-                              child: _buildBetTile(bet),
-                            );
-                          },
                         ),
-                ),
-              ],
+                    ],
+                  ),
+
+                  // Lista de Apostas
+                  if (bets.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 40),
+                      child: Center(
+                        child: Text(
+                          "Nenhum pulo registrado.\nComece sua jornada!",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white24,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap:
+                          true, // Importante dentro de SingleChildScrollView
+                      physics:
+                          const NeverScrollableScrollPhysics(), // Deixa o scroll pro pai
+                      itemCount: bets.length,
+                      itemBuilder: (context, index) {
+                        final bet = bets[index];
+                        return GestureDetector(
+                          onTap: () => _showResolveOptions(
+                            context,
+                            bet,
+                          ),
+                          child: _buildBetTile(bet),
+                        );
+                      },
+                    ),
+
+                  const SizedBox(
+                    height: 80,
+                  ), // Espaço pro FAB
+                ],
+              ),
             ),
           ),
           floatingActionButton:
@@ -165,10 +215,12 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  // --- MÉTODOS VISUAIS ---
+
   void _showResolveOptions(BuildContext context, Bet bet) {
-    // [ATUALIZAÇÃO 2] Verifica se é oficial
     final isOfficial = bet.pandaMatchId != null;
 
+    // Usamos StatefulBuilder aqui para poder atualizar o estado DO MODAL
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surfaceDark,
@@ -178,241 +230,296 @@ class HomePage extends StatelessWidget {
           top: Radius.circular(24),
         ),
       ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(
-            24,
-            24,
-            24,
-            40,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Cabeçalho
-              Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      bet.matchTitle,
-                      style: const TextStyle(
-                        color: AppColors.textWhite,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.close,
-                      color: AppColors.textGrey,
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+      builder: (ctx) {
+        // Variável local para controlar o "Force Unlock"
+        bool forceUnlock = false;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            // Lógica: Bloqueado se for Oficial E o usuário não clicou em forçar
+            final isLocked = isOfficial && !forceUnlock;
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(
+                24,
+                24,
+                24,
+                40,
               ),
-              const SizedBox(height: 24),
-
-              // SEÇÃO 1: Definir Resultado
-              if (bet.result == BetResult.pending) ...[
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    "DEFINIR RESULTADO",
-                    style: TextStyle(
-                      color: AppColors.textGrey,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // [LÓGICA DE BLOQUEIO]
-                if (isOfficial) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.neonPurple
-                          .withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(
-                        12,
-                      ),
-                      border: Border.all(
-                        color: AppColors.neonPurple
-                            .withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: const [
-                        Icon(
-                          Icons.lock_clock,
-                          color: AppColors.neonPurple,
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            "Aposta Oficial vinculada à API. Aguarde o fim da partida ou anule abaixo.",
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else ...[
-                  // BOTÕES MANUAIS (Só aparecem se NÃO for oficial)
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: _buildActionBtnCompact(
-                          label: "GREEN",
-                          color: AppColors.neonGreen,
-                          icon: Icons.trending_up,
-                          onTap: () {
-                            BankrollController.instance
-                                .resolveBet(
-                                  bet,
-                                  BetResult.win,
-                                );
-                            Navigator.pop(context);
-                          },
+                        child: Text(
+                          bet.matchTitle,
+                          style: const TextStyle(
+                            color: AppColors.textWhite,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildActionBtnCompact(
-                          label: "RED",
-                          color: AppColors.errorRed,
-                          icon: Icons.trending_down,
-                          onTap: () {
-                            BankrollController.instance
-                                .resolveBet(
-                                  bet,
-                                  BetResult.loss,
-                                );
-                            Navigator.pop(context);
-                          },
+                      IconButton(
+                        icon: const Icon(
+                          Icons.close,
+                          color: AppColors.textGrey,
                         ),
+                        onPressed: () =>
+                            Navigator.pop(context),
                       ),
                     ],
                   ),
-                ],
+                  const SizedBox(height: 24),
 
-                const SizedBox(height: 12),
-
-                // Botão de Anular (Sempre disponível)
-                _buildActionBtnCompact(
-                  label: "ANULAR / REEMBOLSO",
-                  color: AppColors.textGrey,
-                  icon: Icons.refresh,
-                  onTap: () {
-                    BankrollController.instance.resolveBet(
-                      bet,
-                      BetResult.voided,
-                    );
-                    Navigator.pop(context);
-                  },
-                ),
-                const SizedBox(height: 24),
-              ],
-
-              // SEÇÃO 2: Gerenciamento
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "GERENCIAR",
-                  style: TextStyle(
-                    color: AppColors.textGrey,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              _buildActionBtnCompact(
-                label: "EDITAR INFORMAÇÕES",
-                color: Colors.blueAccent,
-                icon: Icons.edit,
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          CreateBetPage(betToEdit: bet),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildActionBtnCompact(
-                label: "EXCLUIR PULO",
-                color: Colors.red.shade900,
-                icon: Icons.delete_forever,
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      backgroundColor:
-                          AppColors.surfaceDark,
-                      title: const Text(
-                        "Excluir Pulo?",
-                        style: TextStyle(
-                          color: AppColors.textWhite,
-                        ),
-                      ),
-                      content: const Text(
-                        "Isso devolverá o valor da aposta para sua banca e removerá o registro.",
+                  if (bet.result == BetResult.pending) ...[
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "DEFINIR RESULTADO",
                         style: TextStyle(
                           color: AppColors.textGrey,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      actions: [
-                        TextButton(
-                          onPressed: () =>
-                              Navigator.pop(ctx),
-                          child: const Text(
-                            "Cancelar",
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (isLocked) ...[
+                      // --- CARTÃO DE BLOQUEIO ---
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.neonPurple
+                              .withValues(alpha: 0.1),
+                          borderRadius:
+                              BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.neonPurple
+                                .withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: const [
+                                Icon(
+                                  Icons.lock_clock,
+                                  color:
+                                      AppColors.neonPurple,
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    "Aguardando API oficial...",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight:
+                                          FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              "Se a API falhar (Erro 403) ou demorar muito, você pode liberar manualmente abaixo.",
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            // [NOVO] Botão de Emergência
+                            InkWell(
+                              onTap: () {
+                                setModalState(() {
+                                  forceUnlock =
+                                      true; // Libera a UI
+                                });
+                              },
+                              child: const Padding(
+                                padding: EdgeInsets.all(
+                                  8.0,
+                                ),
+                                child: Text(
+                                  "LIBERAR EDIÇÃO MANUAL",
+                                  style: TextStyle(
+                                    color: AppColors
+                                        .neonPurple,
+                                    fontWeight:
+                                        FontWeight.bold,
+                                    decoration:
+                                        TextDecoration
+                                            .underline,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      // --- BOTÕES LIBERADOS (Green/Red) ---
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionBtnCompact(
+                              label: "GREEN",
+                              color: AppColors.neonGreen,
+                              icon: Icons.trending_up,
+                              onTap: () {
+                                BankrollController.instance
+                                    .resolveBet(
+                                      bet,
+                                      BetResult.win,
+                                    );
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildActionBtnCompact(
+                              label: "RED",
+                              color: AppColors.errorRed,
+                              icon: Icons.trending_down,
+                              onTap: () {
+                                BankrollController.instance
+                                    .resolveBet(
+                                      bet,
+                                      BetResult.loss,
+                                    );
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    const SizedBox(height: 12),
+
+                    _buildActionBtnCompact(
+                      label: "ANULAR / REEMBOLSO",
+                      color: AppColors.textGrey,
+                      icon: Icons.refresh,
+                      onTap: () {
+                        BankrollController.instance
+                            .resolveBet(
+                              bet,
+                              BetResult.voided,
+                            );
+                        Navigator.pop(context);
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Gerenciamento (Editar/Excluir)
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "GERENCIAR",
+                      style: TextStyle(
+                        color: AppColors.textGrey,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  _buildActionBtnCompact(
+                    label: "EDITAR INFORMAÇÕES",
+                    color: Colors.blueAccent,
+                    icon: Icons.edit,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              CreateBetPage(betToEdit: bet),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildActionBtnCompact(
+                    label: "EXCLUIR PULO",
+                    color: Colors.red.shade900,
+                    icon: Icons.delete_forever,
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (alertCtx) => AlertDialog(
+                          // Renomeei ctx para alertCtx
+                          backgroundColor:
+                              AppColors.surfaceDark,
+                          title: const Text(
+                            "Excluir Pulo?",
                             style: TextStyle(
                               color: AppColors.textWhite,
                             ),
                           ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            BankrollController.instance
-                                .deleteBet(bet);
-                            Navigator.pop(ctx);
-                            Navigator.pop(context);
-                          },
-                          child: const Text(
-                            "EXCLUIR",
+                          content: const Text(
+                            "Isso removerá o registro.",
                             style: TextStyle(
-                              color: AppColors.errorRed,
-                              fontWeight: FontWeight.bold,
+                              color: AppColors.textGrey,
                             ),
                           ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(alertCtx),
+                              child: const Text(
+                                "Cancelar",
+                                style: TextStyle(
+                                  color:
+                                      AppColors.textWhite,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                BankrollController.instance
+                                    .deleteBet(bet);
+                                Navigator.pop(
+                                  alertCtx,
+                                ); // Fecha o Alert
+                                Navigator.pop(
+                                  context,
+                                ); // Fecha o BottomSheet
+                              },
+                              child: const Text(
+                                "EXCLUIR",
+                                style: TextStyle(
+                                  color: AppColors.errorRed,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  );
-                },
+                      );
+                    },
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
+  // Helpers visuais (Botões e Cards) - Mesmos de antes
   Widget _buildActionBtnCompact({
     required String label,
     required Color color,
@@ -512,7 +619,6 @@ class HomePage extends StatelessWidget {
         statusText = "Anulada";
     }
 
-    // Marca visualmente se é uma aposta oficial (API)
     final isOfficial = bet.pandaMatchId != null;
 
     return Container(
@@ -523,7 +629,6 @@ class HomePage extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: bet.result == BetResult.pending
             ? Border.all(
-                // Borda roxa se oficial, verde se manual
                 color: isOfficial
                     ? AppColors.neonPurple.withValues(
                         alpha: 0.5,
@@ -567,7 +672,6 @@ class HomePage extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    // Ícone discreto para indicar que é oficial
                     if (isOfficial) ...[
                       const SizedBox(width: 6),
                       const Icon(

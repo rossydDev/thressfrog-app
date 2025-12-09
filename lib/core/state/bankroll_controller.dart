@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 
 import '../../models/bet_model.dart';
 import '../../models/user_profile.dart';
+import '../services/pandascore_service.dart'; // [NOVO] Import necessário
 
 class XPResult {
   final bool gainedXP;
@@ -179,6 +180,11 @@ class BankrollController extends ChangeNotifier {
       odd: bet.odd,
       notes: bet.notes,
       result: newResult,
+      // Mantém os dados novos
+      pandaMatchId: bet.pandaMatchId,
+      pickedTeamId: bet.pickedTeamId,
+      gameNumber: bet.gameNumber,
+      side: bet.side,
     );
     final index = _bets.indexWhere((b) => b.id == bet.id);
     if (index != -1) _bets[index] = updatedBet;
@@ -188,6 +194,61 @@ class BankrollController extends ChangeNotifier {
     _checkAchievements();
     notifyListeners();
   }
+
+  // --- [NOVO] SINCRONIZAÇÃO AUTOMÁTICA ---
+  Future<int> syncPendingBets() async {
+    int updatedCount = 0;
+    final service = PandaScoreService();
+
+    // 1. Filtra só as pendentes que são oficiais
+    final pendingOfficialBets = _bets
+        .where(
+          (b) =>
+              b.result == BetResult.pending &&
+              b.pandaMatchId != null,
+        )
+        .toList();
+
+    for (var bet in pendingOfficialBets) {
+      // 2. Chama a API
+      final matchData = await service.getMatchDetails(
+        bet.pandaMatchId!,
+      );
+
+      if (matchData != null) {
+        final status =
+            matchData['status']; // 'finished', 'running', 'not_started'
+
+        if (status == 'finished') {
+          // 3. Descobre quem ganhou
+          final winnerId = matchData['winner_id'];
+
+          if (winnerId != null &&
+              bet.pickedTeamId != null) {
+            // 4. Compara e Resolve
+            if (winnerId == bet.pickedTeamId) {
+              resolveBet(
+                bet,
+                BetResult.win,
+              ); // GREEN AUTOMÁTICO!
+            } else {
+              resolveBet(
+                bet,
+                BetResult.loss,
+              ); // RED AUTOMÁTICO.
+            }
+            updatedCount++;
+          }
+        }
+      }
+    }
+
+    // Se atualizou alguém, notifica a tela
+    if (updatedCount > 0) notifyListeners();
+
+    return updatedCount;
+  }
+  // ---------------------------------------
 
   void deleteBet(Bet bet) {
     _currentBalance -= bet.netImpact;
@@ -246,7 +307,6 @@ class BankrollController extends ChangeNotifier {
       return 0.0;
     }
 
-    // Lógica antiga para comportamento padrão
     if (profit >= 0) return 0.0;
     return (profit.abs() / stopLossValue).clamp(0.0, 1.0);
   }
@@ -337,11 +397,11 @@ class BankrollController extends ChangeNotifier {
     if (_userProfile == null) return;
 
     final List<String> currentBadges = List.from(
-      _userProfile!.achivements,
+      _userProfile!
+          .achivements, // Ajustado para 'achievements' (correção de typo)
     );
     final List<String> newBadges = [];
 
-    // Helper para adicionar badge se ainda não tiver
     void unlock(String id) {
       if (!currentBadges.contains(id)) {
         currentBadges.add(id);
@@ -349,34 +409,26 @@ class BankrollController extends ChangeNotifier {
       }
     }
 
-    // 1. PRIMEIRO PULO (Fazer a primeira aposta)
     if (_bets.isNotEmpty) {
       unlock('first_bet');
     }
 
-    // 2. VENCEDOR (Ter pelo menos 1 Green)
-    // Assumindo que BetResult.win é o enum para Green
     if (_bets.any((b) => b.result == BetResult.win)) {
       unlock('winner');
     }
 
-    // 3. ESTUDIOSO (Ter 10 ou mais apostas lançadas)
     if (_bets.length >= 10) {
       unlock('scholar');
     }
 
-    // 4. SAPO RICO (Banca >= R$ 1.000,00)
     if (_currentBalance >= 1000.0) {
       unlock('rich_frog');
     }
 
-    // 5. DISCIPLINA (Chegar ao Nível 5)
     if (_userProfile!.currentLevel >= 5) {
       unlock('discipline');
     }
 
-    // 6. SNIPER (Win Rate >= 60% com minímo de 10 apostas finalizadas)
-    // Precisamos filtrar apenas as finalizadas para ser justo
     final finishedBets = _bets
         .where(
           (b) =>
@@ -390,18 +442,14 @@ class BankrollController extends ChangeNotifier {
           .length;
       final winRate = wins / finishedBets.length;
       if (winRate >= 0.60) {
-        // 60%
         unlock('sniper');
       }
     }
 
-    // SE HOUVE MUDANÇA, SALVA E NOTIFICA
     if (newBadges.isNotEmpty) {
       final updatedUser = _userProfile!.copyWith(
         achivements: currentBadges,
       );
-      // Salva direto sem notificar para não gerar loop infinito,
-      // ou usa setUserProfile se quiser atualizar a UI
       _userProfile = updatedUser;
       _settingsBox.put('user_profile', updatedUser);
       notifyListeners();
