@@ -16,6 +16,7 @@ void main() async {
   Hive.registerAdapter(BetAdapter()); // ID 1
   Hive.registerAdapter(InvestorProfileAdapter()); // ID 2
   Hive.registerAdapter(UserProfileAdapter()); // ID 3
+  Hive.registerAdapter(LoLSideAdapter());
 
   // Abrir caixas
   await Hive.openBox('settings');

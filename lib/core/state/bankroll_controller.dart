@@ -455,4 +455,35 @@ class BankrollController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Map<String, double> getUserSideStats() {
+    int blueWins = 0;
+    int blueGames = 0;
+    int redWins = 0;
+    int redGames = 0;
+
+    for (var bet in _bets) {
+      // Só conta apostas finalizadas que tenham o lado definido
+      if (bet.result != BetResult.pending &&
+          bet.result != BetResult.voided &&
+          bet.side != null) {
+        if (bet.side == LoLSide.blue) {
+          blueGames++;
+          if (bet.result == BetResult.win) blueWins++;
+        } else if (bet.side == LoLSide.red) {
+          redGames++;
+          if (bet.result == BetResult.win) redWins++;
+        }
+      }
+    }
+
+    return {
+      'blueWinRate': blueGames > 0
+          ? blueWins / blueGames
+          : 0.0,
+      'blueTotal': blueGames.toDouble(),
+      'redWinRate': redGames > 0 ? redWins / redGames : 0.0,
+      'redTotal': redGames.toDouble(),
+    };
+  }
 }

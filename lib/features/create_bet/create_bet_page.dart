@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/bet_model.dart';
-import '../../models/lol_match_model.dart'; // [NOVO] Import do modelo da API
+import '../../models/lol_match_model.dart';
 import '../create_bet/select_match_screen.dart';
 
 class CreateBetPage extends StatefulWidget {
@@ -24,9 +24,12 @@ class _CreateBetPageState extends State<CreateBetPage> {
   late TextEditingController _stakeController;
   late TextEditingController _notesController;
 
-  // [NOVO] Variáveis para controlar a escolha via API
+  // Variáveis para controlar a escolha via API
   LoLMatch? _selectedApiMatch;
   int? _selectedTeamId;
+
+  // [NOVO] Variável para controlar o Lado (Side)
+  LoLSide? _selectedSide;
 
   @override
   void initState() {
@@ -44,9 +47,14 @@ class _CreateBetPageState extends State<CreateBetPage> {
       text: widget.betToEdit?.notes ?? '',
     );
 
-    // Se estiver editando, poderíamos carregar os IDs salvos aqui,
-    // mas por enquanto vamos manter simples para criação.
-    if (widget.betToEdit == null) {
+    // Carrega dados existentes se for edição
+    if (widget.betToEdit != null) {
+      _selectedTeamId = widget.betToEdit!.pickedTeamId;
+      _selectedSide =
+          widget.betToEdit!.side; // [NOVO] Carrega o lado
+      // Nota: Não carregamos _selectedApiMatch completo na edição simples
+      // pois não salvamos o objeto todo, apenas o ID.
+    } else {
       _prefillStake();
     }
   }
@@ -119,9 +127,13 @@ class _CreateBetPageState extends State<CreateBetPage> {
             : BetResult.pending,
         notes: _notesController.text,
 
-        // [NOVO] Salvando os dados de inteligência
-        pandaMatchId: _selectedApiMatch?.id,
+        // Dados de Inteligência
+        pandaMatchId:
+            _selectedApiMatch?.id ??
+            widget.betToEdit?.pandaMatchId,
         pickedTeamId: _selectedTeamId,
+        side:
+            _selectedSide, // [NOVO] Salvando o lado escolhido
       );
 
       if (isEditing) {
@@ -279,7 +291,6 @@ class _CreateBetPageState extends State<CreateBetPage> {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                      // [NOVO] Espera um OBJETO LoLMatch, não string
                       final match =
                           await Navigator.push<LoLMatch>(
                             context,
@@ -294,8 +305,9 @@ class _CreateBetPageState extends State<CreateBetPage> {
                           _selectedApiMatch = match;
                           _matchController.text =
                               match.name;
-                          _selectedTeamId =
-                              null; // Reseta seleção anterior
+                          _selectedTeamId = null;
+                          _selectedSide =
+                              null; // Reseta side ao trocar partida
                         });
                       }
                     },
@@ -333,7 +345,7 @@ class _CreateBetPageState extends State<CreateBetPage> {
                 icon: Icons.gamepad_outlined,
               ),
 
-              // --- [NOVO] SELETOR DE TIMES ---
+              // --- SELETOR DE TIMES ---
               if (_selectedApiMatch != null &&
                   _selectedApiMatch!.teamA != null &&
                   _selectedApiMatch!.teamB != null) ...[
@@ -373,7 +385,38 @@ class _CreateBetPageState extends State<CreateBetPage> {
                 ),
               ],
 
-              // ----------------------------------------
+              // --- [NOVO] SELETOR DE LADO (SIDE) ---
+              const SizedBox(height: 24),
+              const Text(
+                "Configuração Tática (Opcional)",
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSideSelector(
+                      LoLSide.blue,
+                      "Blue Side",
+                      Colors.blueAccent,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildSideSelector(
+                      LoLSide.red,
+                      "Red Side",
+                      Colors.redAccent,
+                    ),
+                  ),
+                ],
+              ),
+
+              // -------------------------------------
               const SizedBox(height: 24),
 
               Row(
@@ -428,7 +471,7 @@ class _CreateBetPageState extends State<CreateBetPage> {
     );
   }
 
-  // [NOVO] Widget para desenhar o cartão do time
+  // Widget para desenhar o cartão do time
   Widget _buildTeamSelector(Team team, bool isSelected) {
     return Expanded(
       child: GestureDetector(
@@ -496,6 +539,75 @@ class _CreateBetPageState extends State<CreateBetPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // [NOVO] Widget para selecionar o lado
+  Widget _buildSideSelector(
+    LoLSide side,
+    String label,
+    Color color,
+  ) {
+    final isSelected = _selectedSide == side;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          // Se já estiver selecionado, desmarca (toggle)
+          if (_selectedSide == side) {
+            _selectedSide = null;
+          } else {
+            _selectedSide = side;
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? color.withValues(alpha: 0.15)
+              : AppColors.surfaceDark,
+          border: Border.all(
+            color: isSelected ? color : Colors.white10,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Bolinha colorida
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: color,
+                          blurRadius: 6,
+                        ),
+                      ]
+                    : [],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected
+                    ? Colors.white
+                    : Colors.white38,
+                fontWeight: isSelected
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
     );
