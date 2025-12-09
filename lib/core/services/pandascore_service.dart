@@ -7,8 +7,7 @@ class PandaScoreService {
   final Dio _dio = Dio();
 
   // 🔑 SUA CHAVE PANDASCORE
-  static const String _token =
-      'SUA_CHAVE_AQUI'; // <--- Verifique se sua chave está aqui!
+  static const String _token = 'SUA_CHAVE_AQUI';
 
   // Ligas Padrão
   static const List<String> defaultLeagues = [

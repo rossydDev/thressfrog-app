@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'core/services/champion_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/home/home_page.dart';
-import 'features/onboarding/onboarding_page.dart'; // Importe o onboarding
+import 'features/onboarding/onboarding_page.dart';
 import 'models/bet_model.dart';
-import 'models/user_profile.dart'; // Importe o user profile
+import 'models/user_profile.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,8 @@ void main() async {
   Hive.registerAdapter(InvestorProfileAdapter()); // ID 2
   Hive.registerAdapter(UserProfileAdapter()); // ID 3
   Hive.registerAdapter(LoLSideAdapter());
+
+  ChampionService().getChampions();
 
   // Abrir caixas
   await Hive.openBox('settings');
