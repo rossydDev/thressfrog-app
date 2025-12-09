@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:thressfrog_app/features/oracle/widgets/league_card.dart';
+import 'package:thressfrog_app/features/oracle/widgets/league_detail_page.dart';
 
 import '../../core/services/pandascore_service.dart';
 import '../../core/state/bankroll_controller.dart';
@@ -265,8 +267,21 @@ class _OraclePageState extends State<OraclePage> {
                     separatorBuilder: (_, __) =>
                         const SizedBox(width: 16),
                     itemBuilder: (context, index) {
-                      return _buildLeagueCard(
-                        snapshot.data![index],
+                      final stats = snapshot.data![index];
+
+                      return LeagueCard(
+                        stats: stats,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  LeagueDetailPage(
+                                    stats: stats,
+                                  ),
+                            ),
+                          );
+                        },
                       );
                     },
                   );
