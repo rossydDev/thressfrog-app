@@ -80,7 +80,7 @@ lib/
 
 1. Clone o repositório:
 ```bash
-  git clone [https://github.com/seu-usuario/thressfrog.git](https://github.com/seu-usuario/thressfrog.git)
+  git clone https://github.com/seu-usuario/thressfrog.git
 ```
 
 2. Instale as dependências:
