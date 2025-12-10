@@ -73,7 +73,11 @@ class Bet extends HiveObject {
   final int? baronNashors;
 
   @HiveField(16)
-  final int? matchDuration; // Tempo em minutos
+  final int? matchDuration;
+  @HiveField(18)
+  final String? pickedTeamName;
+  @HiveField(19)
+  final String? pickedTeamLogo;
 
   Bet({
     required this.id,
@@ -94,6 +98,8 @@ class Bet extends HiveObject {
     this.totalMatchKills,
     this.baronNashors,
     this.matchDuration,
+    this.pickedTeamLogo,
+    this.pickedTeamName,
   });
 
   // Getters auxiliares
@@ -129,6 +135,8 @@ class Bet extends HiveObject {
     int? totalMatchKills,
     int? baronNashors,
     int? matchDuration,
+    String? pickedTeamLogo,
+    String? pickedTeamName,
   }) {
     return Bet(
       id: id ?? this.id,
@@ -150,6 +158,8 @@ class Bet extends HiveObject {
           totalMatchKills ?? this.totalMatchKills,
       baronNashors: baronNashors ?? this.baronNashors,
       matchDuration: matchDuration ?? this.matchDuration,
+      pickedTeamLogo: pickedTeamLogo ?? this.pickedTeamLogo,
+      pickedTeamName: pickedTeamName ?? this.pickedTeamName,
     );
   }
 }

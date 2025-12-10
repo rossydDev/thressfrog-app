@@ -90,14 +90,24 @@ class _CreateBetPageState extends State<CreateBetPage> {
 
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
-      // VALIDAÇÃO GRIMÓRIO (Rigidez Tática)
+      // --- VALIDAÇÕES DO GRIMÓRIO ---
       if (_isGrimoireMode) {
+        // 1. Partida API Obrigatória
+        if (_selectedApiMatch == null &&
+            widget.betToEdit?.pandaMatchId == null) {
+          _showError(
+            "No Modo Grimório, selecione uma partida OFICIAL da API.",
+          );
+          return;
+        }
+        // 2. Side Obrigatório
         if (_selectedSide == null) {
           _showError(
             "No Modo Grimório, o Lado (Side) é obrigatório!",
           );
           return;
         }
+        // 3. Drafts Obrigatórios
         if (_myTeamDraft == null ||
             _myTeamDraft!.length < 5) {
           _showError(
@@ -122,15 +132,38 @@ class _CreateBetPageState extends State<CreateBetPage> {
       final currentBalance =
           BankrollController.instance.currentBalance;
       double availableFunds = currentBalance;
-      if (widget.betToEdit != null) {
+      if (widget.betToEdit != null)
         availableFunds += widget.betToEdit!.stake;
-      }
 
       if (stake > availableFunds) {
         _showError(
           "Saldo insuficiente! R\$ ${availableFunds.toStringAsFixed(2)} disponíveis.",
         );
         return;
+      }
+
+      // --- CAPTURA DE DADOS DO TIME (NOME E LOGO) ---
+      String? pickedTeamName;
+      String? pickedTeamLogo;
+
+      // Se temos o objeto da API e um time selecionado, salvamos os dados visuais
+      if (_selectedApiMatch != null &&
+          _selectedTeamId != null) {
+        if (_selectedApiMatch!.teamA?.id ==
+            _selectedTeamId) {
+          pickedTeamName = _selectedApiMatch!.teamA?.name;
+          pickedTeamLogo =
+              _selectedApiMatch!.teamA?.logoUrl;
+        } else if (_selectedApiMatch!.teamB?.id ==
+            _selectedTeamId) {
+          pickedTeamName = _selectedApiMatch!.teamB?.name;
+          pickedTeamLogo =
+              _selectedApiMatch!.teamB?.logoUrl;
+        }
+      } else if (widget.betToEdit != null) {
+        // Mantém os antigos se for edição sem mudança de jogo
+        pickedTeamName = widget.betToEdit!.pickedTeamName;
+        pickedTeamLogo = widget.betToEdit!.pickedTeamLogo;
       }
 
       final isEditing = widget.betToEdit != null;
@@ -140,7 +173,8 @@ class _CreateBetPageState extends State<CreateBetPage> {
             ? widget.betToEdit!.id
             : DateTime.now().millisecondsSinceEpoch
                   .toString(),
-        matchTitle: _matchController.text,
+        matchTitle: _matchController
+            .text, // Será preenchido automático no modo Grimório
         date: isEditing
             ? widget.betToEdit!.date
             : DateTime.now(),
@@ -156,13 +190,17 @@ class _CreateBetPageState extends State<CreateBetPage> {
         pickedTeamId: _selectedTeamId,
         side: _selectedSide,
 
-        // Salva os Drafts se Grimório estiver ON
+        // Dados Visuais para Filtro Offline
+        pickedTeamName: pickedTeamName,
+        pickedTeamLogo: pickedTeamLogo,
+
+        // Drafts
         myTeamDraft: _isGrimoireMode ? _myTeamDraft : null,
         enemyTeamDraft: _isGrimoireMode
             ? _enemyTeamDraft
             : null,
 
-        // Mantém dados antigos se for edição
+        // Mantém dados estatísticos antigos se for edição
         towers: widget.betToEdit?.towers,
         dragons: widget.betToEdit?.dragons,
         totalMatchKills: widget.betToEdit?.totalMatchKills,
@@ -188,7 +226,7 @@ class _CreateBetPageState extends State<CreateBetPage> {
         Navigator.pop(context);
 
         if (xpResult.leveledUp) {
-          // Lógica de Level Up (mantida)
+          // (Lógica de level up opcional aqui)
         } else if (xpResult.gainedXP) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -256,8 +294,8 @@ class _CreateBetPageState extends State<CreateBetPage> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: _isGrimoireMode
-                      ? AppColors.neonPurple.withValues(
-                          alpha: 0.1,
+                      ? AppColors.neonPurple.withOpacity(
+                          0.1,
                         )
                       : AppColors.surfaceDark,
                   borderRadius: BorderRadius.circular(16),
@@ -292,7 +330,9 @@ class _CreateBetPageState extends State<CreateBetPage> {
                             ),
                           ),
                           Text(
-                            "Análise Tática: Side e Drafts Obrigatórios.",
+                            _isGrimoireMode
+                                ? "Análise Ativa: API, Drafts e Side obrigatórios."
+                                : "Modo Rápido: Apenas financeiro.",
                             style: const TextStyle(
                               color: Colors.white38,
                               fontSize: 10,
@@ -303,8 +343,7 @@ class _CreateBetPageState extends State<CreateBetPage> {
                     ),
                     Switch(
                       value: _isGrimoireMode,
-                      activeThumbColor:
-                          AppColors.neonPurple,
+                      activeColor: AppColors.neonPurple,
                       onChanged: (val) => setState(
                         () => _isGrimoireMode = val,
                       ),
@@ -314,17 +353,148 @@ class _CreateBetPageState extends State<CreateBetPage> {
               ),
               const SizedBox(height: 24),
 
-              // BUSCAR JOGO (API)
-              if (!isEditing) ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
+              // --- CAMPO DE PARTIDA (CONDICIONAL) ---
+              if (_isGrimoireMode) ...[
+                // MODO GRIMÓRIO: Só aceita API
+                if (_selectedApiMatch == null && !isEditing)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final match =
+                            await Navigator.push<LoLMatch>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const SelectMatchScreen(),
+                              ),
+                            );
+                        if (match != null) {
+                          setState(() {
+                            _selectedApiMatch = match;
+                            _matchController.text = match
+                                .name; // Preenche o controller oculto
+                            _selectedTeamId = null;
+                            _selectedSide = null;
+                          });
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            AppColors.surfaceDark,
+                        foregroundColor:
+                            AppColors.neonGreen,
+                        side: const BorderSide(
+                          color: AppColors.neonGreen,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 20,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(Icons.search),
+                      label: const Text(
+                        "BUSCAR PARTIDA OFICIAL (OBRIGATÓRIO)",
+                      ),
+                    ),
+                  )
+                else
+                  // Card da Partida Selecionada
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceDark,
+                      borderRadius: BorderRadius.circular(
+                        16,
+                      ),
+                      border: Border.all(
+                        color: AppColors.neonGreen,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "PARTIDA SELECIONADA",
+                                style: TextStyle(
+                                  color:
+                                      AppColors.neonGreen,
+                                  fontSize: 10,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _matchController.text,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight:
+                                      FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (!isEditing) // Só permite trocar se não estiver editando (simplificação)
+                          IconButton(
+                            icon: const Icon(
+                              Icons.change_circle,
+                              color: Colors.white54,
+                            ),
+                            onPressed: () async {
+                              final match =
+                                  await Navigator.push<
+                                    LoLMatch
+                                  >(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (ctx) =>
+                                          const SelectMatchScreen(),
+                                    ),
+                                  );
+                              if (match != null) {
+                                setState(() {
+                                  _selectedApiMatch = match;
+                                  _matchController.text =
+                                      match.name;
+                                  _selectedTeamId = null;
+                                });
+                              }
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+
+                const SizedBox(height: 24),
+              ] else ...[
+                // MODO SIMPLES: Texto Livre
+                _buildInput(
+                  label:
+                      "Nome da Partida (Ex: T1 vs Gen.G)",
+                  controller: _matchController,
+                  icon: Icons.edit,
+                ),
+
+                // Botão opcional de API
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
                     onPressed: () async {
                       final match =
                           await Navigator.push<LoLMatch>(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
+                              builder: (ctx) =>
                                   const SelectMatchScreen(),
                             ),
                           );
@@ -334,50 +504,32 @@ class _CreateBetPageState extends State<CreateBetPage> {
                           _matchController.text =
                               match.name;
                           _selectedTeamId = null;
-                          _selectedSide = null;
-                          _isGrimoireMode = true;
+                          _isGrimoireMode =
+                              true; // Se buscou na API, sugere ativar Grimório
                         });
                       }
                     },
                     icon: const Icon(
                       Icons.search,
-                      color: AppColors.neonGreen,
+                      size: 14,
+                      color: Colors.white38,
                     ),
                     label: const Text(
-                      "Buscar Jogo Oficial (LoL)",
+                      "Buscar automático (Opcional)",
                       style: TextStyle(
-                        color: AppColors.neonGreen,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(
-                        color: AppColors.neonGreen,
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          12,
-                        ),
+                        color: Colors.white38,
+                        fontSize: 12,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
               ],
-
-              _buildInput(
-                label: "Partida (Ex: T1 vs Gen.G)",
-                controller: _matchController,
-                icon: Icons.gamepad_outlined,
-              ),
 
               // SELETOR DE TIMES
               if (_selectedApiMatch != null &&
                   _selectedApiMatch!.teamA != null &&
                   _selectedApiMatch!.teamB != null) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     _buildTeamSelector(
@@ -516,7 +668,7 @@ class _CreateBetPageState extends State<CreateBetPage> {
     );
   }
 
-  // --- WIDGETS AUXILIARES (TeamSelector, SideSelector, Input) ---
+  // --- WIDGETS AUXILIARES ---
 
   Widget _buildTeamSelector(Team team, bool isSelected) {
     return Expanded(
@@ -667,10 +819,8 @@ class _CreateBetPageState extends State<CreateBetPage> {
       style: const TextStyle(color: AppColors.textWhite),
       cursorColor: AppColors.neonGreen,
       validator: (value) {
-        if (isRequired &&
-            (value == null || value.isEmpty)) {
+        if (isRequired && (value == null || value.isEmpty))
           return 'Campo obrigatório';
-        }
         return null;
       },
       decoration: InputDecoration(

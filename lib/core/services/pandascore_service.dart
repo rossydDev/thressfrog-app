@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../models/league_stats_model.dart';
 import '../../models/lol_match_model.dart';
@@ -7,7 +8,8 @@ class PandaScoreService {
   final Dio _dio = Dio();
 
   // 🔑 SUA CHAVE PANDASCORE
-  static const String _token = 'SUA_CHAVE_AQUI';
+  static final String _token =
+      dotenv.env['PANDASCORE_KEY'] ?? '';
 
   // Ligas Padrão
   static const List<String> defaultLeagues = [

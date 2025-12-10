@@ -35,13 +35,15 @@ class BetAdapter extends TypeAdapter<Bet> {
       totalMatchKills: fields[14] as int?,
       baronNashors: fields[15] as int?,
       matchDuration: fields[16] as int?,
+      pickedTeamLogo: fields[19] as String?,
+      pickedTeamName: fields[18] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Bet obj) {
     writer
-      ..writeByte(18)
+      ..writeByte(20)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -77,7 +79,11 @@ class BetAdapter extends TypeAdapter<Bet> {
       ..writeByte(15)
       ..write(obj.baronNashors)
       ..writeByte(16)
-      ..write(obj.matchDuration);
+      ..write(obj.matchDuration)
+      ..writeByte(18)
+      ..write(obj.pickedTeamName)
+      ..writeByte(19)
+      ..write(obj.pickedTeamLogo);
   }
 
   @override
