@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../core/logic/prophecy_engine.dart'; // [NOVO] Import do motor
 import '../../core/services/pandascore_service.dart';
 import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/champion_performance.dart';
 import '../../models/league_stats_model.dart';
 import 'widgets/champion_stat_tile.dart';
+import 'widgets/insight_carousel.dart'; // [NOVO] Import do widget visual
 import 'widgets/league_card.dart';
 import 'widgets/league_detail_page.dart';
 
@@ -25,23 +27,29 @@ class _OraclePageState extends State<OraclePage> {
   @override
   void initState() {
     super.initState();
+    // Carrega dados da API (Global)
     _leagueStatsFuture = PandaScoreService()
         .getLeagueStats();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Carrega dados Locais filtrados
-    final topChampions = BankrollController.instance
-        .getTopChampions(
-          filterTeamId: _selectedTeamFilterId,
-        );
-    final objectiveStats = BankrollController.instance
-        .getObjectiveStats(
-          filterTeamId: _selectedTeamFilterId,
-        );
-    final trackedTeams = BankrollController.instance
-        .getTrackedTeams();
+    final controller = BankrollController.instance;
+
+    // Carrega dados filtrados
+    final topChampions = controller.getTopChampions(
+      filterTeamId: _selectedTeamFilterId,
+    );
+    final objectiveStats = controller.getObjectiveStats(
+      filterTeamId: _selectedTeamFilterId,
+    );
+    final trackedTeams = controller.getTrackedTeams();
+
+    // [NOVO] Gera as Profecias com base no filtro atual
+    final insights = ProphecyEngine.generateInsights(
+      controller.bets,
+      filterTeamId: _selectedTeamFilterId,
+    );
 
     return DefaultTabController(
       length: 2,
@@ -80,12 +88,10 @@ class _OraclePageState extends State<OraclePage> {
                   // 0. Barra de Filtro de Times (Horizontal)
                   if (trackedTeams.isNotEmpty) ...[
                     SizedBox(
-                      height: 50,
+                      height: 40,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        itemCount:
-                            trackedTeams.length +
-                            1, // +1 para o botão "Todos"
+                        itemCount: trackedTeams.length + 1,
                         itemBuilder: (context, index) {
                           if (index == 0) {
                             return _buildFilterChip(
@@ -119,7 +125,22 @@ class _OraclePageState extends State<OraclePage> {
                     const SizedBox(height: 24),
                   ],
 
-                  // 1. Seção de Objetivos (Over/Under)
+                  // 1. [NOVO] Carrossel de Insights (Profecias)
+                  if (insights.isNotEmpty) ...[
+                    const Text(
+                      "Profecias do Sapo",
+                      style: TextStyle(
+                        color: AppColors.neonPurple,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    InsightCarousel(insights: insights),
+                    const SizedBox(height: 32),
+                  ],
+
+                  // 2. Seção de Objetivos (Over/Under)
                   Text(
                     _selectedTeamFilterId == null
                         ? "Médias Gerais"
@@ -135,7 +156,7 @@ class _OraclePageState extends State<OraclePage> {
 
                   const SizedBox(height: 32),
 
-                  // 2. Seção de Campeões (Top Tier)
+                  // 3. Seção de Campeões (Top Tier)
                   const Text(
                     "Melhores Agentes",
                     style: TextStyle(
@@ -175,7 +196,8 @@ class _OraclePageState extends State<OraclePage> {
     );
   }
 
-  // --- WIDGETS AUXILIARES ---
+  // --- WIDGETS AUXILIARES (FilterChip, GlobalTab, ObjectiveCard, etc) ---
+  // (O resto do arquivo continua idêntico ao que te mandei antes)
 
   Widget _buildFilterChip({
     required String label,
@@ -224,6 +246,7 @@ class _OraclePageState extends State<OraclePage> {
                     ? Colors.black
                     : Colors.white,
                 fontWeight: FontWeight.bold,
+                fontSize: 12,
               ),
             ),
           ],
@@ -254,7 +277,6 @@ class _OraclePageState extends State<OraclePage> {
             ),
           );
         }
-
         final stats = snapshot.data ?? [];
         if (stats.isEmpty) {
           return const Center(
@@ -291,6 +313,8 @@ class _OraclePageState extends State<OraclePage> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.surfaceDark, Colors.black],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
@@ -404,7 +428,6 @@ class _OraclePageState extends State<OraclePage> {
         Expanded(
           child: Row(
             children: [
-              // Barra Vitória
               Expanded(
                 flex: (winVal * 10).toInt() + 1,
                 child: Container(
@@ -418,13 +441,11 @@ class _OraclePageState extends State<OraclePage> {
                   alignment: Alignment.centerLeft,
                 ),
               ),
-              // Separador
               Container(
                 width: 2,
                 height: 12,
                 color: Colors.black,
               ),
-              // Barra Derrota
               Expanded(
                 flex: (lossVal * 10).toInt() + 1,
                 child: Container(

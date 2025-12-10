@@ -7,6 +7,7 @@ import 'core/theme/app_theme.dart';
 import 'features/home/home_page.dart';
 import 'features/onboarding/onboarding_page.dart';
 import 'models/bet_model.dart';
+import 'models/lol_team_model.dart';
 import 'models/user_profile.dart';
 
 void main() async {
@@ -30,10 +31,14 @@ void main() async {
   // ID 5: InvestorProfile (Novo ID!)
   Hive.registerAdapter(InvestorProfileAdapter());
 
+  Hive.registerAdapter(LoLPlayerAdapter()); // ID 6
+  Hive.registerAdapter(LoLTeamAdapter()); // ID 7
+
   // Carrega os campeões em segundo plano
   ChampionService().getChampions();
 
   // Abre as caixas
+  await Hive.openBox<LoLTeam>('known_teams');
   await Hive.openBox('settings');
   await Hive.openBox<Bet>('bets');
 

@@ -194,4 +194,53 @@ class PandaScoreService {
       return null;
     }
   }
+
+  Future<Map<String, dynamic>?> getTeamDetails(
+    int teamId,
+  ) async {
+    try {
+      final response = await _dio.get(
+        'https://api.pandascore.co/lol/teams/$teamId',
+        options: Options(
+          headers: {'Authorization': 'Bearer $_token'},
+        ),
+      );
+
+      // A API pode retornar uma lista ou objeto direto, tratamos aqui
+      if (response.data is List &&
+          response.data.isNotEmpty) {
+        return response.data[0];
+      } else if (response.data is Map<String, dynamic>) {
+        return response.data;
+      }
+      return null;
+    } catch (e) {
+      print("Erro ao buscar time $teamId: $e");
+      return null;
+    }
+  }
+
+  /// Busca times por nome (para a barra de pesquisa)
+  Future<List<Map<String, dynamic>>> searchTeams(
+    String query,
+  ) async {
+    try {
+      final response = await _dio.get(
+        'https://api.pandascore.co/lol/teams',
+        queryParameters: {
+          'search[name]': query,
+          'sort':
+              '-modified_at', // Pega os mais relevantes/recentes
+          'per_page': 10,
+        },
+        options: Options(
+          headers: {'Authorization': 'Bearer $_token'},
+        ),
+      );
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      print("Erro na busca: $e");
+      return [];
+    }
+  }
 }
