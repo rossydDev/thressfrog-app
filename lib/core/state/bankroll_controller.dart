@@ -5,7 +5,8 @@ import 'package:hive/hive.dart';
 import '../../models/bet_model.dart';
 import '../../models/champion_performance.dart';
 import '../../models/user_profile.dart';
-import '../services/pandascore_service.dart';
+// Removido o import do serviço API pois não faremos mais sync automático de resultado
+// import '../services/pandascore_service.dart';
 
 class XPResult {
   final bool gainedXP;
@@ -74,7 +75,6 @@ class BankrollController extends ChangeNotifier {
 
   XPResult addBet(Bet bet) {
     _bets.insert(0, bet);
-    // Ao criar, removemos a stake do saldo imediatamente
     _currentBalance -= bet.stake;
 
     _betsBox.put(bet.id, bet);
@@ -113,7 +113,7 @@ class BankrollController extends ChangeNotifier {
       if (isGhostModeTriggered) {
         return XPResult(
           message:
-              "Sem XP: GHOST ATIVADO! Você devolveu todo o lucro do dia. Pare no 0x0.",
+              "Sem XP: GHOST ATIVADO! Você devolveu todo o lucro do dia.",
         );
       } else {
         return XPResult(
@@ -126,8 +126,7 @@ class BankrollController extends ChangeNotifier {
     final sWin = stopWinValue;
     if (profitToday >= sWin) {
       return XPResult(
-        message:
-            "Sem XP: Meta do dia já batida (+R\$${profitToday.toStringAsFixed(2)}). Descanse!",
+        message: "Sem XP: Meta do dia já batida. Descanse!",
       );
     }
 
@@ -163,37 +162,26 @@ class BankrollController extends ChangeNotifier {
     );
   }
 
-  // --- CORREÇÃO CRÍTICA: LÓGICA DE RESOLUÇÃO ---
   void resolveBet(Bet bet, BetResult newResult) {
-    // 1. REVERTER O ESTADO FINANCEIRO ATUAL (Voltar ao passado)
-    // Devolvemos o dinheiro para a mão como se a aposta nunca tivesse ocorrido ou sido finalizada.
-
+    // 1. REVERTER O ESTADO FINANCEIRO ATUAL
     if (bet.result == BetResult.pending) {
-      _currentBalance +=
-          bet.stake; // Devolve a stake que estava presa
+      _currentBalance += bet.stake;
     } else if (bet.result == BetResult.loss) {
-      _currentBalance +=
-          bet.stake; // Devolve a stake que foi perdida
+      _currentBalance += bet.stake;
     } else if (bet.result == BetResult.win) {
-      // Se era Green, removemos o Lucro Líquido que foi adicionado
       final profit = (bet.stake * bet.odd) - bet.stake;
       _currentBalance -= profit;
-      // Nota: A stake em si já "pertencia" ao usuário, então ao tirar o lucro, voltamos ao estado neutro + stake.
     }
-    // Se era Voided, o dinheiro já estava na mão, não fazemos nada na reversão.
 
     // 2. APLICAR O NOVO ESTADO
     if (newResult == BetResult.pending) {
-      _currentBalance -=
-          bet.stake; // Trava a stake novamente
+      _currentBalance -= bet.stake;
     } else if (newResult == BetResult.loss) {
-      _currentBalance -= bet.stake; // Perde a stake
+      _currentBalance -= bet.stake;
     } else if (newResult == BetResult.win) {
-      // Ganhou: Adiciona o Lucro Líquido ao saldo (Stake já está na mão virtualmente após a reversão)
       final profit = (bet.stake * bet.odd) - bet.stake;
       _currentBalance += profit;
     }
-    // Se for Voided, não fazemos nada (dinheiro fica na mão).
 
     // 3. ATUALIZAR OBJETO E BANCO
     final updatedBet = bet.copyWith(result: newResult);
@@ -207,63 +195,18 @@ class BankrollController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- SINCRONIZAÇÃO AUTOMÁTICA ---
-  Future<int> syncPendingBets() async {
-    int updatedCount = 0;
-    final service = PandaScoreService();
+  // --- [REMOVIDO] SYNC AUTOMÁTICO (A TRAVA) ---
+  // Método removido para garantir que não haja tentativa de sync com API.
 
-    final pendingOfficialBets = _bets
-        .where(
-          (b) =>
-              b.result == BetResult.pending &&
-              b.pandaMatchId != null,
-        )
-        .toList();
-
-    for (var bet in pendingOfficialBets) {
-      final matchData = await service.getMatchDetails(
-        bet.pandaMatchId!,
-      );
-
-      if (matchData != null) {
-        final status = matchData['status'];
-
-        if (status == 'finished') {
-          final winnerId = matchData['winner_id'];
-
-          if (winnerId != null &&
-              bet.pickedTeamId != null) {
-            if (winnerId == bet.pickedTeamId) {
-              resolveBet(bet, BetResult.win);
-            } else {
-              resolveBet(bet, BetResult.loss);
-            }
-            updatedCount++;
-          }
-        }
-      }
-    }
-
-    if (updatedCount > 0) notifyListeners();
-    return updatedCount;
-  }
-
-  // --- CORREÇÃO CRÍTICA: LÓGICA DE EXCLUSÃO ---
   void deleteBet(Bet bet) {
-    // Mesma lógica de reversão do resolveBet
-
     if (bet.result == BetResult.pending) {
-      _currentBalance +=
-          bet.stake; // Devolve a stake pra carteira
+      _currentBalance += bet.stake;
     } else if (bet.result == BetResult.loss) {
-      _currentBalance += bet
-          .stake; // Restaura o dinheiro perdido (correção de erro)
+      _currentBalance += bet.stake;
     } else if (bet.result == BetResult.win) {
-      // Se era win, removemos o lucro ganho indevidamente
       final profit = (bet.stake * bet.odd) - bet.stake;
       _currentBalance -= profit;
     }
-    // Voided já está neutro.
 
     _bets.removeWhere((b) => b.id == bet.id);
     _betsBox.delete(bet.id);
@@ -272,17 +215,11 @@ class BankrollController extends ChangeNotifier {
   }
 
   void updateBet(Bet oldBet, Bet newBet) {
-    // Reverte o impacto da antiga
+    // Reverte impacto antigo
     if (oldBet.result == BetResult.pending) {
       _currentBalance += oldBet.stake;
     }
-    // (Simplificação: Update geralmente acontece em apostas pendentes.
-    // Se quiser editar aposta finalizada, precisaria da lógica completa de reversão acima).
-
-    // Aplica a nova
-    _currentBalance -= newBet
-        .netImpact; // Cuidado aqui, netImpact depende do resultado
-    // Vamos simplificar assumindo edição de aposta pendente por enquanto:
+    // Aplica novo impacto
     if (newBet.result == BetResult.pending) {
       _currentBalance -= newBet.stake;
     }
@@ -346,7 +283,6 @@ class BankrollController extends ChangeNotifier {
     final chronologicalBets = _bets.reversed.toList();
     for (int i = 0; i < chronologicalBets.length; i++) {
       final bet = chronologicalBets[i];
-      // Aqui usamos netImpact apenas para visualização
       runningBalance += bet.netImpact;
       spots.add(FlSpot((i + 1).toDouble(), runningBalance));
     }
@@ -400,9 +336,8 @@ class BankrollController extends ChangeNotifier {
   }
 
   bool get isGhostModeTriggered {
-    if (_userProfile == null || !_userProfile!.ghostMode) {
+    if (_userProfile == null || !_userProfile!.ghostMode)
       return false;
-    }
     return profitTodayRaw >=
         (stopWinValue *
             _userProfile!.ghostTriggerPercentage);
@@ -415,7 +350,6 @@ class BankrollController extends ChangeNotifier {
 
   void _checkAchievements() {
     if (_userProfile == null) return;
-
     final List<String> currentBadges = List.from(
       _userProfile!.achivements,
     );
@@ -429,14 +363,12 @@ class BankrollController extends ChangeNotifier {
     }
 
     if (_bets.isNotEmpty) unlock('first_bet');
-    if (_bets.any((b) => b.result == BetResult.win)) {
+    if (_bets.any((b) => b.result == BetResult.win))
       unlock('winner');
-    }
     if (_bets.length >= 10) unlock('scholar');
     if (_currentBalance >= 1000.0) unlock('rich_frog');
-    if (_userProfile!.currentLevel >= 5) {
+    if (_userProfile!.currentLevel >= 5)
       unlock('discipline');
-    }
 
     final finishedBets = _bets
         .where(
@@ -445,13 +377,12 @@ class BankrollController extends ChangeNotifier {
               b.result == BetResult.loss,
         )
         .toList();
-
     if (finishedBets.length >= 10) {
       final wins = finishedBets
           .where((b) => b.result == BetResult.win)
           .length;
-      final winRate = wins / finishedBets.length;
-      if (winRate >= 0.60) unlock('sniper');
+      if (wins / finishedBets.length >= 0.60)
+        unlock('sniper');
     }
 
     if (newBadges.isNotEmpty) {
@@ -465,10 +396,10 @@ class BankrollController extends ChangeNotifier {
   }
 
   Map<String, double> getUserSideStats() {
-    int blueWins = 0;
-    int blueGames = 0;
-    int redWins = 0;
-    int redGames = 0;
+    int blueWins = 0,
+        blueGames = 0,
+        redWins = 0,
+        redGames = 0;
 
     for (var bet in _bets) {
       if (bet.result != BetResult.pending &&
@@ -494,25 +425,31 @@ class BankrollController extends ChangeNotifier {
     };
   }
 
-  List<ChampionPerformance> getTopChampions() {
-    // Mapa temporário: "Ahri" -> {games: 5, wins: 3, profit: 50.0}
+  // --- NOVOS MÉTODOS DO GRIMÓRIO (COM FILTRO DE TIME) ---
+
+  // 1. Motor de Campeões (Agora aceita filtro de time)
+  List<ChampionPerformance> getTopChampions({
+    int? filterTeamId,
+  }) {
     final Map<String, Map<String, dynamic>> statsMap = {};
 
     for (var bet in _bets) {
-      // Pula apostas pendentes ou anuladas, ou sem draft
       if (bet.result == BetResult.pending ||
-          bet.result == BetResult.voided) {
+          bet.result == BetResult.voided)
         continue;
-      }
       if (bet.myTeamDraft == null ||
-          bet.myTeamDraft!.isEmpty) {
+          bet.myTeamDraft!.isEmpty)
+        continue;
+
+      // FILTRO DE TIME
+      if (filterTeamId != null &&
+          bet.pickedTeamId != filterTeamId) {
         continue;
       }
 
       final profit = bet.netImpact;
       final isWin = bet.result == BetResult.win;
 
-      // Para cada campeão no draft dessa aposta
       for (var champId in bet.myTeamDraft!) {
         if (!statsMap.containsKey(champId)) {
           statsMap[champId] = {
@@ -521,16 +458,12 @@ class BankrollController extends ChangeNotifier {
             'profit': 0.0,
           };
         }
-
         statsMap[champId]!['games'] += 1;
         statsMap[champId]!['profit'] += profit;
-        if (isWin) {
-          statsMap[champId]!['wins'] += 1;
-        }
+        if (isWin) statsMap[champId]!['wins'] += 1;
       }
     }
 
-    // Transforma o Mapa em Lista de Objetos
     final List<ChampionPerformance> performanceList = [];
     statsMap.forEach((id, data) {
       performanceList.add(
@@ -543,37 +476,32 @@ class BankrollController extends ChangeNotifier {
       );
     });
 
-    // Ordena: Quem dá mais lucro primeiro (Top Tier)
-    // Se quiser ordenar por Winrate: b.winRate.compareTo(a.winRate)
     performanceList.sort(
       (a, b) => b.netProfit.compareTo(a.netProfit),
     );
-
     return performanceList;
   }
 
-  // 2. Motor de Análise de Objetivos (Over/Under)
-  ObjectiveStats getObjectiveStats() {
-    int winCount = 0;
-    int lossCount = 0;
-
-    int towersWin = 0;
-    int towersLoss = 0;
-
-    int dragonsWin = 0;
-    int dragonsLoss = 0;
-
-    int totalKills = 0;
-    int totalDuration = 0;
-    int gamesWithStats = 0;
+  // 2. Motor de Objetivos (Agora aceita filtro de time)
+  ObjectiveStats getObjectiveStats({int? filterTeamId}) {
+    int winCount = 0, lossCount = 0;
+    int towersWin = 0, towersLoss = 0;
+    int dragonsWin = 0, dragonsLoss = 0;
+    int totalKills = 0,
+        totalDuration = 0,
+        gamesWithStats = 0;
 
     for (var bet in _bets) {
       if (bet.result == BetResult.pending ||
-          bet.result == BetResult.voided) {
+          bet.result == BetResult.voided)
+        continue;
+
+      // FILTRO DE TIME
+      if (filterTeamId != null &&
+          bet.pickedTeamId != filterTeamId) {
         continue;
       }
 
-      // Acumula médias gerais (se tiver os dados)
       if (bet.totalMatchKills != null &&
           bet.matchDuration != null) {
         totalKills += bet.totalMatchKills!;
@@ -581,7 +509,6 @@ class BankrollController extends ChangeNotifier {
         gamesWithStats++;
       }
 
-      // Separa médias de Vitória vs Derrota (para análise de objetivos)
       if (bet.towers != null && bet.dragons != null) {
         if (bet.result == BetResult.win) {
           winCount++;
@@ -615,5 +542,26 @@ class BankrollController extends ChangeNotifier {
           ? totalDuration / gamesWithStats
           : 0.0,
     );
+  }
+
+  // 3. NOVO: Pega a lista de times únicos que o usuário já apostou
+  List<Map<String, dynamic>> getTrackedTeams() {
+    final Map<int, Map<String, dynamic>> teams = {};
+
+    for (var bet in _bets) {
+      if (bet.pickedTeamId != null &&
+          bet.pickedTeamName != null) {
+        // Usa o ID como chave para não duplicar
+        if (!teams.containsKey(bet.pickedTeamId)) {
+          teams[bet.pickedTeamId!] = {
+            'id': bet.pickedTeamId,
+            'name': bet.pickedTeamName,
+            'logo': bet.pickedTeamLogo,
+          };
+        }
+      }
+    }
+
+    return teams.values.toList();
   }
 }

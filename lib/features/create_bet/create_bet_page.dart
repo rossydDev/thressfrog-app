@@ -132,8 +132,9 @@ class _CreateBetPageState extends State<CreateBetPage> {
       final currentBalance =
           BankrollController.instance.currentBalance;
       double availableFunds = currentBalance;
-      if (widget.betToEdit != null)
+      if (widget.betToEdit != null) {
         availableFunds += widget.betToEdit!.stake;
+      }
 
       if (stake > availableFunds) {
         _showError(
@@ -294,8 +295,8 @@ class _CreateBetPageState extends State<CreateBetPage> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: _isGrimoireMode
-                      ? AppColors.neonPurple.withOpacity(
-                          0.1,
+                      ? AppColors.neonPurple.withValues(
+                          alpha: 0.1,
                         )
                       : AppColors.surfaceDark,
                   borderRadius: BorderRadius.circular(16),
@@ -343,7 +344,8 @@ class _CreateBetPageState extends State<CreateBetPage> {
                     ),
                     Switch(
                       value: _isGrimoireMode,
-                      activeColor: AppColors.neonPurple,
+                      activeThumbColor:
+                          AppColors.neonPurple,
                       onChanged: (val) => setState(
                         () => _isGrimoireMode = val,
                       ),
@@ -819,8 +821,10 @@ class _CreateBetPageState extends State<CreateBetPage> {
       style: const TextStyle(color: AppColors.textWhite),
       cursorColor: AppColors.neonGreen,
       validator: (value) {
-        if (isRequired && (value == null || value.isEmpty))
+        if (isRequired &&
+            (value == null || value.isEmpty)) {
           return 'Campo obrigatório';
+        }
         return null;
       },
       decoration: InputDecoration(

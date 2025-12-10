@@ -6,42 +6,11 @@ import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/bet_model.dart';
 import '../create_bet/create_bet_page.dart';
+// Import do Modal de Resolução (Certifique-se que o arquivo existe)
 import 'widgets/grimoire_resolution_modal.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  // Roda assim que a tela nasce
-  @override
-  void initState() {
-    super.initState();
-    // Faz a sincronização silenciosa ao abrir
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _syncData();
-    });
-  }
-
-  // Método centralizado de sync
-  Future<void> _syncData() async {
-    final count = await BankrollController.instance
-        .syncPendingBets();
-    if (count > 0 && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "$count apostas atualizadas pela API! 🐸✅",
-          ),
-          backgroundColor: AppColors.neonGreen,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,135 +25,123 @@ class _HomePageState extends State<HomePage> {
 
         return Scaffold(
           appBar: ThresholdAppBar(),
-          body: RefreshIndicator(
-            // [NOVIDADE] Puxar para atualizar (cor do loading)
-            color: AppColors.neonGreen,
-            backgroundColor: AppColors.surfaceDark,
-            onRefresh: _syncData, // Chama o sync ao puxar
-            child: SingleChildScrollView(
-              // Physics necessário para o RefreshIndicator funcionar mesmo com pouco conteúdo
-              physics:
-                  const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-              ),
-              child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
 
-                  // Seção de Saldo (Sem o botão confuso agora)
-                  const Text(
-                    "Banca Total",
-                    style: TextStyle(
-                      color: AppColors.textGrey,
-                      fontSize: 16,
+                // Seção de Saldo
+                const Text(
+                  "Banca Total",
+                  style: TextStyle(
+                    color: AppColors.textGrey,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "R\$ ${bankroll.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                    color: AppColors.textWhite,
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -1.0,
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                // Cards de Resumo
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSummaryCard(
+                        "Lucro Total",
+                        "R\$ ${profit.toStringAsFixed(2)}",
+                        isPositive: profit >= 0,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "R\$ ${bankroll.toStringAsFixed(2)}",
-                    style: const TextStyle(
-                      color: AppColors.textWhite,
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -1.0,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildSummaryCard(
+                        "Win Rate",
+                        winRate,
+                        isPositive: true,
+                      ),
                     ),
-                  ),
+                  ],
+                ),
 
-                  const SizedBox(height: 30),
+                const SizedBox(height: 24),
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildSummaryCard(
-                          "Lucro Total",
-                          "R\$ ${profit.toStringAsFixed(2)}",
-                          isPositive: profit >= 0,
-                        ),
+                const BankrollChart(),
+
+                const SizedBox(height: 30),
+
+                // Cabeçalho da Lista
+                Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Últimos Pulos",
+                      style: TextStyle(
+                        color: AppColors.textWhite,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildSummaryCard(
-                          "Win Rate",
-                          winRate,
-                          isPositive: true,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  const BankrollChart(),
-
-                  const SizedBox(height: 30),
-
-                  // Cabeçalho da Lista
-                  Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Últimos Pulos",
-                        style: TextStyle(
-                          color: AppColors.textWhite,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (bets.isNotEmpty)
-                        TextButton(
-                          onPressed: () {},
-                          child: Text(
-                            "Ver tudo (${bets.length})",
-                            style: const TextStyle(
-                              color: AppColors.neonGreen,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-
-                  // Lista de Apostas
-                  if (bets.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 40),
-                      child: Center(
+                    ),
+                    if (bets.isNotEmpty)
+                      TextButton(
+                        onPressed: () {},
                         child: Text(
-                          "Nenhum pulo registrado.\nComece sua jornada!",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white24,
+                          "Ver tudo (${bets.length})",
+                          style: const TextStyle(
+                            color: AppColors.neonGreen,
                           ),
                         ),
                       ),
-                    )
-                  else
-                    ListView.builder(
-                      shrinkWrap:
-                          true, // Importante dentro de SingleChildScrollView
-                      physics:
-                          const NeverScrollableScrollPhysics(), // Deixa o scroll pro pai
-                      itemCount: bets.length,
-                      itemBuilder: (context, index) {
-                        final bet = bets[index];
-                        return GestureDetector(
-                          onTap: () => _showResolveOptions(
-                            context,
-                            bet,
-                          ),
-                          child: _buildBetTile(bet),
-                        );
-                      },
-                    ),
+                  ],
+                ),
 
-                  const SizedBox(
-                    height: 80,
-                  ), // Espaço pro FAB
-                ],
-              ),
+                // Lista de Apostas
+                if (bets.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 40),
+                    child: Center(
+                      child: Text(
+                        "Nenhum pulo registrado.\nComece sua jornada!",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white24,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics:
+                        const NeverScrollableScrollPhysics(),
+                    itemCount: bets.length,
+                    itemBuilder: (context, index) {
+                      final bet = bets[index];
+                      return GestureDetector(
+                        onTap: () => _showResolveOptions(
+                          context,
+                          bet,
+                        ),
+                        child: _buildBetTile(bet),
+                      );
+                    },
+                  ),
+
+                const SizedBox(height: 80),
+              ],
             ),
           ),
           floatingActionButton:
@@ -216,12 +173,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- MÉTODOS VISUAIS ---
+  // --- LOGICA DE RESOLUÇÃO (MODIFICADA) ---
 
   void _showResolveOptions(BuildContext context, Bet bet) {
-    final isOfficial = bet.pandaMatchId != null;
-
-    // Usamos StatefulBuilder aqui para poder atualizar o estado DO MODAL
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surfaceDark,
@@ -232,349 +186,243 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       builder: (ctx) {
-        // Variável local para controlar o "Force Unlock"
-        bool forceUnlock = false;
-
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            // Lógica: Bloqueado se for Oficial E o usuário não clicou em forçar
-            final isLocked = isOfficial && !forceUnlock;
-
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(
-                24,
-                24,
-                24,
-                40,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+            24,
+            24,
+            24,
+            40,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Cabeçalho do Modal
+              Row(
+                mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          bet.matchTitle,
-                          style: const TextStyle(
-                            color: AppColors.textWhite,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.close,
-                          color: AppColors.textGrey,
-                        ),
-                        onPressed: () =>
-                            Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  if (bet.result == BetResult.pending) ...[
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "DEFINIR RESULTADO",
-                        style: TextStyle(
-                          color: AppColors.textGrey,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    if (isLocked) ...[
-                      // --- CARTÃO DE BLOQUEIO ---
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.neonPurple
-                              .withValues(alpha: 0.1),
-                          borderRadius:
-                              BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppColors.neonPurple
-                                .withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: const [
-                                Icon(
-                                  Icons.lock_clock,
-                                  color:
-                                      AppColors.neonPurple,
-                                ),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    "Aguardando API oficial...",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight:
-                                          FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              "Se a API falhar (Erro 403) ou demorar muito, você pode liberar manualmente abaixo.",
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            // [NOVO] Botão de Emergência
-                            InkWell(
-                              onTap: () {
-                                setModalState(() {
-                                  forceUnlock =
-                                      true; // Libera a UI
-                                });
-                              },
-                              child: const Padding(
-                                padding: EdgeInsets.all(
-                                  8.0,
-                                ),
-                                child: Text(
-                                  "LIBERAR EDIÇÃO MANUAL",
-                                  style: TextStyle(
-                                    color: AppColors
-                                        .neonPurple,
-                                    fontWeight:
-                                        FontWeight.bold,
-                                    decoration:
-                                        TextDecoration
-                                            .underline,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ] else ...[
-                      // --- BOTÕES LIBERADOS (Green/Red) ---
-                      Row(
-                        children: [
-                          // BOTÃO GREEN
-                          Expanded(
-                            child: _buildActionBtnCompact(
-                              label: "GREEN",
-                              color: AppColors.neonGreen,
-                              icon: Icons.trending_up,
-                              onTap: () {
-                                // Verifica se é aposta do Grimório (tem Draft?)
-                                if (bet.myTeamDraft !=
-                                        null &&
-                                    bet
-                                        .myTeamDraft!
-                                        .isNotEmpty) {
-                                  Navigator.pop(
-                                    context,
-                                  ); // Fecha o menu de opções
-                                  // Abre o Questionário Tático
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled:
-                                        true,
-                                    backgroundColor:
-                                        Colors.transparent,
-                                    builder: (ctx) =>
-                                        GrimoireResolutionModal(
-                                          bet: bet,
-                                          intendedResult:
-                                              BetResult.win,
-                                        ),
-                                  );
-                                } else {
-                                  // Aposta Simples: Resolve direto
-                                  BankrollController
-                                      .instance
-                                      .resolveBet(
-                                        bet,
-                                        BetResult.win,
-                                      );
-                                  Navigator.pop(context);
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-
-                          // BOTÃO RED
-                          Expanded(
-                            child: _buildActionBtnCompact(
-                              label: "RED",
-                              color: AppColors.errorRed,
-                              icon: Icons.trending_down,
-                              onTap: () {
-                                // Mesma lógica para o RED
-                                if (bet.myTeamDraft !=
-                                        null &&
-                                    bet
-                                        .myTeamDraft!
-                                        .isNotEmpty) {
-                                  Navigator.pop(context);
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled:
-                                        true,
-                                    backgroundColor:
-                                        Colors.transparent,
-                                    builder: (ctx) =>
-                                        GrimoireResolutionModal(
-                                          bet: bet,
-                                          intendedResult:
-                                              BetResult
-                                                  .loss,
-                                        ),
-                                  );
-                                } else {
-                                  BankrollController
-                                      .instance
-                                      .resolveBet(
-                                        bet,
-                                        BetResult.loss,
-                                      );
-                                  Navigator.pop(context);
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-
-                    const SizedBox(height: 12),
-
-                    _buildActionBtnCompact(
-                      label: "ANULAR / REEMBOLSO",
-                      color: AppColors.textGrey,
-                      icon: Icons.refresh,
-                      onTap: () {
-                        BankrollController.instance
-                            .resolveBet(
-                              bet,
-                              BetResult.voided,
-                            );
-                        Navigator.pop(context);
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Gerenciamento (Editar/Excluir)
-                  const Align(
-                    alignment: Alignment.centerLeft,
+                  Expanded(
                     child: Text(
-                      "GERENCIAR",
-                      style: TextStyle(
-                        color: AppColors.textGrey,
-                        fontSize: 12,
+                      bet.matchTitle,
+                      style: const TextStyle(
+                        color: AppColors.textWhite,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(height: 12),
-
-                  _buildActionBtnCompact(
-                    label: "EDITAR INFORMAÇÕES",
-                    color: Colors.blueAccent,
-                    icon: Icons.edit,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              CreateBetPage(betToEdit: bet),
-                        ),
-                      );
-                    },
+                  IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      color: AppColors.textGrey,
+                    ),
+                    onPressed: () => Navigator.pop(context),
                   ),
-                  const SizedBox(height: 12),
-                  _buildActionBtnCompact(
-                    label: "EXCLUIR PULO",
-                    color: Colors.red.shade900,
-                    icon: Icons.delete_forever,
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (alertCtx) => AlertDialog(
-                          // Renomeei ctx para alertCtx
-                          backgroundColor:
-                              AppColors.surfaceDark,
-                          title: const Text(
-                            "Excluir Pulo?",
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // SE APOSTA PENDENTE -> MOSTRAR OPÇÕES DE RESOLUÇÃO
+              if (bet.result == BetResult.pending) ...[
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "DEFINIR RESULTADO",
+                    style: TextStyle(
+                      color: AppColors.textGrey,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    // BOTÃO GREEN
+                    Expanded(
+                      child: _buildActionBtnCompact(
+                        label: "GREEN",
+                        color: AppColors.neonGreen,
+                        icon: Icons.trending_up,
+                        onTap: () {
+                          // Lógica Inteligente: É Grimório?
+                          if (bet.myTeamDraft != null) {
+                            Navigator.pop(
+                              context,
+                            ); // Fecha menu
+                            // Abre Entrevista Pós-Jogo
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor:
+                                  Colors.transparent,
+                              builder: (ctx) =>
+                                  GrimoireResolutionModal(
+                                    bet: bet,
+                                    intendedResult:
+                                        BetResult.win,
+                                  ),
+                            );
+                          } else {
+                            // Aposta Simples: Resolve Direto
+                            BankrollController.instance
+                                .resolveBet(
+                                  bet,
+                                  BetResult.win,
+                                );
+                            Navigator.pop(context);
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // BOTÃO RED
+                    Expanded(
+                      child: _buildActionBtnCompact(
+                        label: "RED",
+                        color: AppColors.errorRed,
+                        icon: Icons.trending_down,
+                        onTap: () {
+                          // Mesma lógica para RED
+                          if (bet.myTeamDraft != null) {
+                            Navigator.pop(context);
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor:
+                                  Colors.transparent,
+                              builder: (ctx) =>
+                                  GrimoireResolutionModal(
+                                    bet: bet,
+                                    intendedResult:
+                                        BetResult.loss,
+                                  ),
+                            );
+                          } else {
+                            BankrollController.instance
+                                .resolveBet(
+                                  bet,
+                                  BetResult.loss,
+                                );
+                            Navigator.pop(context);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                _buildActionBtnCompact(
+                  label: "ANULAR / REEMBOLSO",
+                  color: AppColors.textGrey,
+                  icon: Icons.refresh,
+                  onTap: () {
+                    BankrollController.instance.resolveBet(
+                      bet,
+                      BetResult.voided,
+                    );
+                    Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // GERENCIAMENTO (Editar/Excluir)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "GERENCIAR",
+                  style: TextStyle(
+                    color: AppColors.textGrey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              _buildActionBtnCompact(
+                label: "EDITAR INFORMAÇÕES",
+                color: Colors.blueAccent,
+                icon: Icons.edit,
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          CreateBetPage(betToEdit: bet),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildActionBtnCompact(
+                label: "EXCLUIR PULO",
+                color: Colors.red.shade900,
+                icon: Icons.delete_forever,
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (alertCtx) => AlertDialog(
+                      backgroundColor:
+                          AppColors.surfaceDark,
+                      title: const Text(
+                        "Excluir Pulo?",
+                        style: TextStyle(
+                          color: AppColors.textWhite,
+                        ),
+                      ),
+                      content: const Text(
+                        "Isso removerá o registro e estornará o valor (se pendente).",
+                        style: TextStyle(
+                          color: AppColors.textGrey,
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.pop(alertCtx),
+                          child: const Text(
+                            "Cancelar",
                             style: TextStyle(
                               color: AppColors.textWhite,
                             ),
                           ),
-                          content: const Text(
-                            "Isso removerá o registro.",
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            BankrollController.instance
+                                .deleteBet(bet);
+                            Navigator.pop(alertCtx);
+                            Navigator.pop(context);
+                          },
+                          child: const Text(
+                            "EXCLUIR",
                             style: TextStyle(
-                              color: AppColors.textGrey,
+                              color: AppColors.errorRed,
                             ),
                           ),
-                          actions: [
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(alertCtx),
-                              child: const Text(
-                                "Cancelar",
-                                style: TextStyle(
-                                  color:
-                                      AppColors.textWhite,
-                                ),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                BankrollController.instance
-                                    .deleteBet(bet);
-                                Navigator.pop(
-                                  alertCtx,
-                                ); // Fecha o Alert
-                                Navigator.pop(
-                                  context,
-                                ); // Fecha o BottomSheet
-                              },
-                              child: const Text(
-                                "EXCLUIR",
-                                style: TextStyle(
-                                  color: AppColors.errorRed,
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
-                      );
-                    },
-                  ),
-                ],
+                      ],
+                    ),
+                  );
+                },
               ),
-            );
-          },
+            ],
+          ),
         );
       },
     );
   }
 
-  // Helpers visuais (Botões e Cards) - Mesmos de antes
+  // --- HELPERS VISUAIS ---
+
   Widget _buildActionBtnCompact({
     required String label,
     required Color color,

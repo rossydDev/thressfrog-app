@@ -5,7 +5,7 @@ import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/champion_performance.dart';
 import '../../models/league_stats_model.dart';
-import 'widgets/champion_stat_tile.dart'; // [NOVO]
+import 'widgets/champion_stat_tile.dart';
 import 'widgets/league_card.dart';
 import 'widgets/league_detail_page.dart';
 
@@ -19,21 +19,29 @@ class OraclePage extends StatefulWidget {
 class _OraclePageState extends State<OraclePage> {
   late Future<List<LeagueStats>> _leagueStatsFuture;
 
+  // Variável para controlar o time filtrado (null = todos)
+  int? _selectedTeamFilterId;
+
   @override
   void initState() {
     super.initState();
-    // Carrega dados da API (Lado Servidor)
     _leagueStatsFuture = PandaScoreService()
         .getLeagueStats();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Carrega dados Locais (Lado Cliente)
+    // Carrega dados Locais filtrados
     final topChampions = BankrollController.instance
-        .getTopChampions();
+        .getTopChampions(
+          filterTeamId: _selectedTeamFilterId,
+        );
     final objectiveStats = BankrollController.instance
-        .getObjectiveStats();
+        .getObjectiveStats(
+          filterTeamId: _selectedTeamFilterId,
+        );
+    final trackedTeams = BankrollController.instance
+        .getTrackedTeams();
 
     return DefaultTabController(
       length: 2,
@@ -69,10 +77,54 @@ class _OraclePageState extends State<OraclePage> {
                 crossAxisAlignment:
                     CrossAxisAlignment.start,
                 children: [
+                  // 0. Barra de Filtro de Times (Horizontal)
+                  if (trackedTeams.isNotEmpty) ...[
+                    SizedBox(
+                      height: 50,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount:
+                            trackedTeams.length +
+                            1, // +1 para o botão "Todos"
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            return _buildFilterChip(
+                              label: "Todos",
+                              isSelected:
+                                  _selectedTeamFilterId ==
+                                  null,
+                              onTap: () => setState(
+                                () =>
+                                    _selectedTeamFilterId =
+                                        null,
+                              ),
+                            );
+                          }
+                          final team =
+                              trackedTeams[index - 1];
+                          return _buildFilterChip(
+                            label: team['name'],
+                            logoUrl: team['logo'],
+                            isSelected:
+                                _selectedTeamFilterId ==
+                                team['id'],
+                            onTap: () => setState(
+                              () => _selectedTeamFilterId =
+                                  team['id'],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
                   // 1. Seção de Objetivos (Over/Under)
-                  const Text(
-                    "Médias de Combate",
-                    style: TextStyle(
+                  Text(
+                    _selectedTeamFilterId == null
+                        ? "Médias Gerais"
+                        : "Médias do Time Selecionado",
+                    style: const TextStyle(
                       color: AppColors.textWhite,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -85,7 +137,7 @@ class _OraclePageState extends State<OraclePage> {
 
                   // 2. Seção de Campeões (Top Tier)
                   const Text(
-                    "Seus Melhores Agentes",
+                    "Melhores Agentes",
                     style: TextStyle(
                       color: AppColors.neonGreen,
                       fontSize: 18,
@@ -96,7 +148,7 @@ class _OraclePageState extends State<OraclePage> {
 
                   if (topChampions.isEmpty)
                     _buildEmptyState(
-                      "Nenhum dado tático registrado.\nUse o 'Modo Grimório' ao criar apostas!",
+                      "Nenhum dado tático registrado para este filtro.\nUse o 'Modo Grimório' ao criar apostas!",
                     )
                   else
                     ListView.builder(
@@ -123,7 +175,63 @@ class _OraclePageState extends State<OraclePage> {
     );
   }
 
-  // --- WIDGETS DA ABA API ---
+  // --- WIDGETS AUXILIARES ---
+
+  Widget _buildFilterChip({
+    required String label,
+    String? logoUrl,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 8,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.neonPurple
+              : AppColors.surfaceDark,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.neonPurple
+                : Colors.white10,
+          ),
+        ),
+        child: Row(
+          children: [
+            if (logoUrl != null) ...[
+              Image.network(
+                logoUrl,
+                height: 20,
+                width: 20,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.shield,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected
+                    ? Colors.black
+                    : Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildGlobalTrendsTab() {
     return FutureBuilder<List<LeagueStats>>(
       future: _leagueStatsFuture,
@@ -176,8 +284,6 @@ class _OraclePageState extends State<OraclePage> {
       },
     );
   }
-
-  // --- WIDGETS DA ABA GRIMÓRIO ---
 
   Widget _buildObjectiveCard(ObjectiveStats stats) {
     return Container(
