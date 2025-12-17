@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:thressfrog_app/features/main/main_page.dart';
 
 import 'core/services/champion_service.dart';
 import 'core/theme/app_theme.dart';
-import 'features/home/home_page.dart';
 import 'features/onboarding/onboarding_page.dart';
 import 'models/bet_model.dart';
 import 'models/lol_team_model.dart';
@@ -59,7 +59,7 @@ class ThressFrogApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       home: hasUser
-          ? const HomePage()
+          ? const MainPage()
           : const OnboardingPage(),
     );
   }

@@ -4,9 +4,7 @@ import 'package:hive/hive.dart';
 
 import '../../models/bet_model.dart';
 import '../../models/champion_performance.dart';
-import '../../models/user_profile.dart';
-// Removido o import do serviço API pois não faremos mais sync automático de resultado
-// import '../services/pandascore_service.dart';
+import '../../models/user_profile.dart'; //
 
 class XPResult {
   final bool gainedXP;
@@ -25,6 +23,7 @@ class XPResult {
 class BankrollController extends ChangeNotifier {
   static final BankrollController instance =
       BankrollController._();
+
   Box get _settingsBox => Hive.box('settings');
   Box<Bet> get _betsBox => Hive.box<Bet>('bets');
 
@@ -36,8 +35,21 @@ class BankrollController extends ChangeNotifier {
   List<Bet> _bets = [];
   UserProfile? _userProfile;
 
+  // --- GETTERS PÚBLICOS ---
   double get currentBalance => _currentBalance;
   List<Bet> get bets => List.unmodifiable(_bets);
+
+  // [CORREÇÃO FINAL] Getter 'user' ajustado para os nomes corretos
+  UserProfile get user =>
+      _userProfile ??
+      UserProfile(
+        name: "Invocador",
+        initialBankroll: 100.0,
+        // [CORREÇÃO]: currentBankroll não existe no construtor
+        profile: InvestorProfile
+            .frog, // [CORREÇÃO]: Era 'moderate', agora é 'frog'
+      );
+
   UserProfile? get userProfile => _userProfile;
 
   void _loadData() {
@@ -45,33 +57,56 @@ class BankrollController extends ChangeNotifier {
         !Hive.isBoxOpen('bets')) {
       return;
     }
+
+    // Carrega Perfil
     if (_settingsBox.containsKey('user_profile')) {
       _userProfile =
           _settingsBox.get('user_profile') as UserProfile?;
+    } else {
+      // Cria padrão se não existir
+      _userProfile = UserProfile(
+        name: "Invocador",
+        initialBankroll: 100.0,
+        // [CORREÇÃO]: Usando 'frog' em vez de 'moderate'
+        profile: InvestorProfile.frog,
+      );
+      _settingsBox.put('user_profile', _userProfile);
     }
+
+    // Carrega Saldo
     if (_settingsBox.containsKey('balance')) {
       _currentBalance = _settingsBox.get('balance');
-    } else if (_userProfile != null) {
+    } else {
       _currentBalance = _userProfile!.initialBankroll;
     }
+
+    // Carrega Apostas
     _bets = _betsBox.values.toList();
     _bets.sort((a, b) => b.date.compareTo(a.date));
+
     notifyListeners();
+  }
+
+  // [MÉTODO NOVO] Chamado pela ProfilePage para salvar alterações
+  void updateUser(UserProfile newUser) {
+    setUserProfile(newUser);
   }
 
   void setUserProfile(UserProfile user) {
     _userProfile = user;
+
+    // Se o saldo estiver zerado (primeiro uso), ajusta para o inicial do perfil
     if (_currentBalance == 0) {
       _currentBalance = user.initialBankroll;
       _settingsBox.put('balance', _currentBalance);
     }
-    _settingsBox.put('user_profile', user);
 
+    _settingsBox.put('user_profile', user);
     _checkAchievements();
     notifyListeners();
   }
 
-  // --- MÉTODOS DE AÇÃO ---
+  // --- MÉTODOS DE AÇÃO (APOSTAS) ---
 
   XPResult addBet(Bet bet) {
     _bets.insert(0, bet);
@@ -96,6 +131,7 @@ class BankrollController extends ChangeNotifier {
     final suggested = _userProfile!.suggestedStake(
       _currentBalance + bet.stake,
     );
+    // Tolerância de R$1.0 acima da sugestão
     final bool isStakeCorrect =
         bet.stake <= (suggested + 1.0);
 
@@ -195,9 +231,6 @@ class BankrollController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- [REMOVIDO] SYNC AUTOMÁTICO (A TRAVA) ---
-  // Método removido para garantir que não haja tentativa de sync com API.
-
   void deleteBet(Bet bet) {
     if (bet.result == BetResult.pending) {
       _currentBalance += bet.stake;
@@ -215,11 +248,9 @@ class BankrollController extends ChangeNotifier {
   }
 
   void updateBet(Bet oldBet, Bet newBet) {
-    // Reverte impacto antigo
     if (oldBet.result == BetResult.pending) {
       _currentBalance += oldBet.stake;
     }
-    // Aplica novo impacto
     if (newBet.result == BetResult.pending) {
       _currentBalance -= newBet.stake;
     }
@@ -232,6 +263,8 @@ class BankrollController extends ChangeNotifier {
     _settingsBox.put('balance', _currentBalance);
     notifyListeners();
   }
+
+  // --- GETTERS DE ESTATÍSTICAS ---
 
   double get profitTodayRaw {
     final now = DateTime.now();
@@ -336,8 +369,9 @@ class BankrollController extends ChangeNotifier {
   }
 
   bool get isGhostModeTriggered {
-    if (_userProfile == null || !_userProfile!.ghostMode)
+    if (_userProfile == null || !_userProfile!.ghostMode) {
       return false;
+    }
     return profitTodayRaw >=
         (stopWinValue *
             _userProfile!.ghostTriggerPercentage);
@@ -363,12 +397,14 @@ class BankrollController extends ChangeNotifier {
     }
 
     if (_bets.isNotEmpty) unlock('first_bet');
-    if (_bets.any((b) => b.result == BetResult.win))
+    if (_bets.any((b) => b.result == BetResult.win)) {
       unlock('winner');
+    }
     if (_bets.length >= 10) unlock('scholar');
     if (_currentBalance >= 1000.0) unlock('rich_frog');
-    if (_userProfile!.currentLevel >= 5)
+    if (_userProfile!.currentLevel >= 5) {
       unlock('discipline');
+    }
 
     final finishedBets = _bets
         .where(
@@ -377,12 +413,14 @@ class BankrollController extends ChangeNotifier {
               b.result == BetResult.loss,
         )
         .toList();
+
     if (finishedBets.length >= 10) {
       final wins = finishedBets
           .where((b) => b.result == BetResult.win)
           .length;
-      if (wins / finishedBets.length >= 0.60)
+      if (wins / finishedBets.length >= 0.60) {
         unlock('sniper');
+      }
     }
 
     if (newBadges.isNotEmpty) {
@@ -425,9 +463,8 @@ class BankrollController extends ChangeNotifier {
     };
   }
 
-  // --- NOVOS MÉTODOS DO GRIMÓRIO (COM FILTRO DE TIME) ---
+  // --- MÉTODOS DO GRIMÓRIO (COM FILTRO DE TIME) ---
 
-  // 1. Motor de Campeões (Agora aceita filtro de time)
   List<ChampionPerformance> getTopChampions({
     int? filterTeamId,
   }) {
@@ -435,11 +472,13 @@ class BankrollController extends ChangeNotifier {
 
     for (var bet in _bets) {
       if (bet.result == BetResult.pending ||
-          bet.result == BetResult.voided)
+          bet.result == BetResult.voided) {
         continue;
+      }
       if (bet.myTeamDraft == null ||
-          bet.myTeamDraft!.isEmpty)
+          bet.myTeamDraft!.isEmpty) {
         continue;
+      }
 
       // FILTRO DE TIME
       if (filterTeamId != null &&
@@ -482,7 +521,6 @@ class BankrollController extends ChangeNotifier {
     return performanceList;
   }
 
-  // 2. Motor de Objetivos (Agora aceita filtro de time)
   ObjectiveStats getObjectiveStats({int? filterTeamId}) {
     int winCount = 0, lossCount = 0;
     int towersWin = 0, towersLoss = 0;
@@ -493,10 +531,9 @@ class BankrollController extends ChangeNotifier {
 
     for (var bet in _bets) {
       if (bet.result == BetResult.pending ||
-          bet.result == BetResult.voided)
+          bet.result == BetResult.voided) {
         continue;
-
-      // FILTRO DE TIME
+      }
       if (filterTeamId != null &&
           bet.pickedTeamId != filterTeamId) {
         continue;
@@ -544,14 +581,12 @@ class BankrollController extends ChangeNotifier {
     );
   }
 
-  // 3. NOVO: Pega a lista de times únicos que o usuário já apostou
   List<Map<String, dynamic>> getTrackedTeams() {
     final Map<int, Map<String, dynamic>> teams = {};
 
     for (var bet in _bets) {
       if (bet.pickedTeamId != null &&
           bet.pickedTeamName != null) {
-        // Usa o ID como chave para não duplicar
         if (!teams.containsKey(bet.pickedTeamId)) {
           teams[bet.pickedTeamId!] = {
             'id': bet.pickedTeamId,
@@ -561,7 +596,29 @@ class BankrollController extends ChangeNotifier {
         }
       }
     }
-
     return teams.values.toList();
+  }
+
+  void updateCapital(double amount) {
+    if (_userProfile == null) return;
+
+    // 1. Atualiza o Saldo Atual
+    _currentBalance += amount;
+
+    // 2. Atualiza a Banca Inicial
+    // (Isso é necessário para que o gráfico não ache que esse dinheiro veio de lucro de aposta)
+    final newInitial =
+        _userProfile!.initialBankroll + amount;
+
+    final updatedUser = _userProfile!.copyWith(
+      initialBankroll: newInitial,
+    );
+
+    // 3. Salva tudo
+    _userProfile = updatedUser;
+    _settingsBox.put('user_profile', updatedUser);
+    _settingsBox.put('balance', _currentBalance);
+
+    notifyListeners();
   }
 }

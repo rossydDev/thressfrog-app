@@ -12,6 +12,7 @@ import 'widgets/grimoire_locked_card.dart'; // [IMPORTANTE] Import do card de bl
 import 'widgets/insight_carousel.dart';
 import 'widgets/league_card.dart';
 import 'widgets/league_detail_page.dart';
+import 'widgets/team_detail_page.dart';
 import 'widgets/team_search_delegate.dart';
 
 class OraclePage extends StatefulWidget {
@@ -72,14 +73,12 @@ class _OraclePageState extends State<OraclePage> {
                 );
 
                 if (result != null && result is LoLTeam) {
-                  ScaffoldMessenger.of(
+                  // [NOVO] Navegar para a página de detalhes
+                  Navigator.push(
                     context,
-                  ).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        "Você invocou: ${result.name}",
-                      ),
-                      backgroundColor: AppColors.neonGreen,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          TeamDetailPage(team: result),
                     ),
                   );
                 }

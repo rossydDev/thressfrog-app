@@ -37,16 +37,20 @@ class InsightCarousel extends StatelessWidget {
     switch (insight.type) {
       case InsightType.buff:
         mainColor = AppColors.neonGreen;
-        bgColor = AppColors.neonGreen.withOpacity(0.15);
+        bgColor = AppColors.neonGreen.withValues(
+          alpha: 0.15,
+        );
         break;
       case InsightType.curse:
         mainColor = AppColors.errorRed;
-        bgColor = AppColors.errorRed.withOpacity(0.15);
+        bgColor = AppColors.errorRed.withValues(
+          alpha: 0.15,
+        );
         break;
       case InsightType.neutral:
       default:
         mainColor = Colors.blueAccent;
-        bgColor = Colors.blueAccent.withOpacity(0.15);
+        bgColor = Colors.blueAccent.withValues(alpha: 0.15);
         break;
     }
 
@@ -57,7 +61,7 @@ class InsightCarousel extends StatelessWidget {
         color: AppColors.surfaceDark,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: mainColor.withOpacity(0.3),
+          color: mainColor.withValues(alpha: 0.3),
           width: 1,
         ),
         gradient: LinearGradient(
@@ -67,7 +71,7 @@ class InsightCarousel extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -82,7 +86,7 @@ class InsightCarousel extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: mainColor.withOpacity(0.2),
+                  color: mainColor.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -112,7 +116,9 @@ class InsightCarousel extends StatelessWidget {
                       Text(
                         "${(insight.confidence * 100).toInt()}% DE CERTEZA",
                         style: TextStyle(
-                          color: mainColor.withOpacity(0.7),
+                          color: mainColor.withValues(
+                            alpha: 0.7,
+                          ),
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),

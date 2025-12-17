@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:thressfrog_app/features/home/widgets/bankroll_chart.dart';
-import 'package:thressfrog_app/features/home/widgets/threshold_app_bar.dart';
 
 import '../../core/state/bankroll_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/bet_model.dart';
 import '../create_bet/create_bet_page.dart';
-// Import do Modal de Resolução (Certifique-se que o arquivo existe)
+import '../profile/profile_page.dart'; // Import da Página de Perfil
 import 'widgets/grimoire_resolution_modal.dart';
 
 class HomePage extends StatelessWidget {
@@ -24,7 +23,47 @@ class HomePage extends StatelessWidget {
         final profit = controller.todayProfit;
 
         return Scaffold(
-          appBar: ThresholdAppBar(),
+          // 1. APPBAR COM BOTÃO DE PERFIL
+          appBar: AppBar(
+            backgroundColor: AppColors.deepBlack,
+            elevation: 0,
+            title: Row(
+              children: [
+                const Icon(
+                  Icons.analytics,
+                  color: AppColors.neonGreen,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  "THRESS FROG",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              // Botão para abrir o Perfil
+              IconButton(
+                tooltip: "Meu Perfil",
+                icon: const Icon(
+                  Icons.person_outline,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ProfilePage(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 10),
+            ],
+          ),
+
           body: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
               horizontal: 20.0,
@@ -34,7 +73,7 @@ class HomePage extends StatelessWidget {
               children: [
                 const SizedBox(height: 20),
 
-                // Seção de Saldo
+                // 2. SEÇÃO DE SALDO INTERATIVO (GERENCIAR CAPITAL)
                 const Text(
                   "Banca Total",
                   style: TextStyle(
@@ -43,13 +82,39 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  "R\$ ${bankroll.toStringAsFixed(2)}",
-                  style: const TextStyle(
-                    color: AppColors.textWhite,
-                    fontSize: 40,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -1.0,
+
+                // GestureDetector para abrir o menu de capital ao clicar no saldo
+                GestureDetector(
+                  onTap: () =>
+                      _showBankrollManager(context),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "R\$ ${bankroll.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                          color: AppColors.textWhite,
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -1.0,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Ícone discreto indicando edição
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.neonGreen
+                              .withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.edit,
+                          color: AppColors.neonGreen,
+                          size: 16,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -173,7 +238,182 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // --- LOGICA DE RESOLUÇÃO (MODIFICADA) ---
+  // --- 3. NOVO: GERENCIADOR DE BANCA (Depósito/Saque) ---
+  void _showBankrollManager(BuildContext context) {
+    final amountController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            24,
+            24,
+            MediaQuery.of(ctx).viewInsets.bottom + 40,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Gerenciar Capital",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                "Faça um aporte ou realize seus lucros. Isso ajusta sua banca sem afetar as estatísticas de apostas.",
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              TextField(
+                controller: amountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+                decoration: InputDecoration(
+                  prefixText: "R\$ ",
+                  prefixStyle: const TextStyle(
+                    color: AppColors.neonGreen,
+                    fontSize: 24,
+                  ),
+                  hintText: "0.00",
+                  hintStyle: TextStyle(
+                    color: Colors.white.withOpacity(0.3),
+                  ),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(
+                      color: Colors.white.withOpacity(0.1),
+                    ),
+                  ),
+                  focusedBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(
+                      color: AppColors.neonGreen,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              Row(
+                children: [
+                  // BOTÃO DEPOSITAR
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            AppColors.neonGreen,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                        ),
+                      ),
+                      onPressed: () {
+                        final val = double.tryParse(
+                          amountController.text.replaceAll(
+                            ',',
+                            '.',
+                          ),
+                        );
+                        if (val != null && val > 0) {
+                          // Chama o método updateCapital que criamos no controller
+                          BankrollController.instance
+                              .updateCapital(val);
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "Aporte de R\$ $val realizado! 🚀",
+                              ),
+                              backgroundColor:
+                                  AppColors.neonGreen,
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.arrow_upward),
+                      label: const Text("APORTAR"),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+
+                  // BOTÃO SACAR
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            AppColors.surfaceDark,
+                        foregroundColor: AppColors.errorRed,
+                        side: const BorderSide(
+                          color: AppColors.errorRed,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                        ),
+                      ),
+                      onPressed: () {
+                        final val = double.tryParse(
+                          amountController.text.replaceAll(
+                            ',',
+                            '.',
+                          ),
+                        );
+                        if (val != null && val > 0) {
+                          // Chama o método updateCapital com valor negativo para sacar
+                          BankrollController.instance
+                              .updateCapital(-val);
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Saque realizado. Dinheiro no bolso! 💸",
+                              ),
+                              backgroundColor: Colors.white,
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(
+                        Icons.arrow_downward,
+                      ),
+                      label: const Text("SACAR"),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // --- LOGICA DE RESOLUÇÃO (Mantida igual) ---
 
   void _showResolveOptions(BuildContext context, Bet bet) {
     showModalBottomSheet(
